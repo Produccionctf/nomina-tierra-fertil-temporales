@@ -6,7 +6,7 @@
   <title>Sistema de Horarios y Nómina - Tierra Fértil</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Library SheetJS -->
+  <!-- SheetJS CDN -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body class="bg-[#f3f4f6] font-sans text-gray-800">
@@ -18,10 +18,10 @@
         <div class="flex items-center gap-3">
           <h1 class="text-2xl font-bold tracking-tight">Horas · Tierra Fértil</h1>
           <span class="inline-flex items-center bg-[#2e5a3f] text-[#a7f3d0] text-xs px-2.5 py-0.5 rounded-full font-semibold border border-[#3b7c53]/40">
-            <span class="w-1.5 h-1.5 mr-1.5 bg-green-400 rounded-full"></span> GitHub App (En Línea)
+            <span class="w-1.5 h-1.5 mr-1.5 bg-green-400 rounded-full"></span> Motor Minuto a Minuto (Base 7h)
           </span>
         </div>
-        <p class="text-gray-300 text-sm mt-1">Registro de entradas, salidas y observaciones del personal · Colombia Base 7h</p>
+        <p class="text-gray-300 text-sm mt-1">Registro de entradas, salidas y novedades · Reglas Colombia con corte a medianoche</p>
       </div>
       <button type="button" onclick="ejecutarDescargaExcel()" class="mt-4 md:mt-0 bg-[#3b7c53] hover:bg-[#2f6342] text-white font-bold py-2.5 px-5 rounded flex items-center shadow-md transition-all border border-[#489564]">
         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
@@ -60,7 +60,7 @@
         </div>
         <div>
           <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Hora Salida</label>
-          <input type="time" id="globalOut" value="15:00" class="w-full border p-2 rounded focus:ring-2 focus:ring-[#3b7c53]">
+          <input type="time" id="globalOut" value="14:00" class="w-full border p-2 rounded focus:ring-2 focus:ring-[#3b7c53]">
         </div>
         <div>
           <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Observación Global</label>
@@ -78,7 +78,7 @@
         <h2 id="novTitle" class="text-lg font-semibold text-amber-800">3. Registrar / Modificar Novedad Individual</h2>
         <span id="editingBadge" class="hidden text-xs font-bold bg-amber-100 text-amber-800 px-2 py-1 rounded border border-amber-200">Editando Novedad</span>
       </div>
-      <p class="text-sm text-gray-500 mb-4">Selecciona el empleado y la fecha para cambiar o añadir un registro diario individual.</p>
+      <p class="text-sm text-gray-500 mb-4">Selecciona el empleado y la fecha para cambiar o añadir un turno específico o correctivo.</p>
       
       <div class="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
         <div>
@@ -86,7 +86,7 @@
           <select id="novEmp" class="w-full border p-2 rounded focus:ring-2 focus:ring-amber-500"></select>
         </div>
         <div>
-          <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Fecha</label>
+          <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Fecha Entrada</label>
           <input type="date" id="novDate" class="w-full border p-2 rounded focus:ring-2 focus:ring-amber-500">
         </div>
         <div>
@@ -99,7 +99,7 @@
         </div>
         <div>
           <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Observaciones / Novedad</label>
-          <input type="text" id="novObs" placeholder="Ej: Licencia, Permiso" class="w-full border p-2 rounded focus:ring-2 focus:ring-amber-500">
+          <input type="text" id="novObs" placeholder="Ej: Turno domingo noche a lunes" class="w-full border p-2 rounded focus:ring-2 focus:ring-amber-500">
         </div>
         <div class="flex gap-2">
           <button type="button" id="btnSaveNov" onclick="applyIndividualNovedad()" class="w-full bg-amber-600 text-white py-2 px-4 rounded font-bold hover:bg-amber-700 transition">Guardar Novedad</button>
@@ -140,6 +140,7 @@
   </div>
 
   <script>
+    // Calendario Oficial Festivos Colombia (2025 - 2027)
     const COLOMBIA_HOLIDAYS = new Set([
       '2025-01-01', '2025-01-06', '2025-03-24', '2025-04-17', '2025-04-18', '2025-05-01',
       '2025-06-02', '2025-06-23', '2025-06-30', '2025-07-20', '2025-08-07', '2025-08-18',
@@ -161,6 +162,9 @@
       const nDate = document.getElementById('novDate');
       if (gDate) gDate.value = hoy;
       if (nDate) nDate.value = hoy;
+      
+      // Recalcular registros guardados con las nuevas reglas
+      recalcularRegistrosExistentes();
       renderEmployees();
       renderTable();
     });
@@ -170,6 +174,107 @@
       localStorage.setItem('nomina_timeRecords', JSON.stringify(timeRecords));
     }
 
+    function isFestivo(dateObj) {
+      const y = dateObj.getFullYear();
+      const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const d = String(dateObj.getDate()).padStart(2, '0');
+      return COLOMBIA_HOLIDAYS.has(`${y}-${m}-${d}`);
+    }
+
+    function isDominicalOFestivo(dateObj) {
+      return dateObj.getDay() === 0 || isFestivo(dateObj);
+    }
+
+    function getDayTypeStr(dateObj) {
+      if (isFestivo(dateObj)) return 'Festivo';
+      if (dateObj.getDay() === 0) return 'Domingo';
+      if (dateObj.getDay() === 6) return 'Sábado';
+      return 'Hábiles (Lun-Vie)';
+    }
+
+    // --- MOTOR DE CÁLCULO DINÁMICO MINUTO A MINUTO ---
+    function processShiftRules(emp, dateStr, inTimeStr, outTimeStr, obsStr = '') {
+      const [year, month, day] = dateStr.split('-').map(Number);
+      const [inH, inM] = inTimeStr.split(':').map(Number);
+      const [outH, outM] = outTimeStr.split(':').map(Number);
+
+      let start = new Date(year, month - 1, day, inH, inM, 0);
+      let end = new Date(year, month - 1, day, outH, outM, 0);
+
+      // Si la salida es menor o igual a la entrada, cruza la medianoche hacia el día siguiente
+      if (end <= start) {
+        end.setDate(end.getDate() + 1);
+      }
+
+      let totalMinutes = Math.round((end - start) / 60000);
+      let ordinariasReq = 7 * 60; // Base diaria fija de 7 horas (420 min)
+
+      let ordMins = Math.min(totalMinutes, ordinariasReq);
+      let extraMins = Math.max(0, totalMinutes - ordinariasReq);
+
+      let HEDO = 0, HENO = 0, HEDD = 0, HEND = 0;
+
+      if (extraMins > 0) {
+        let extraStart = new Date(start.getTime() + ordinariasReq * 60000);
+        let curr = new Date(extraStart);
+
+        while (curr < end) {
+          let hour = curr.getHours();
+          let esDiurno = hour >= 6 && hour < 21; // 06:00 a 20:59 es diurno
+          let esDomOFest = isDominicalOFestivo(curr);
+
+          // Si el turno empezó un domingo o festivo por la tarde/noche y supera las 7h,
+          // las horas posteriores son dominicales hasta que el reloj marque medianoche.
+          if (esDomOFest) {
+            if (esDiurno) {
+              // Si la jornada base terminó después de las 6pm en domingo, se considera recargo/extra dominical
+              if (hour >= 18 && hour < 21) {
+                HEND++; // Regla de jornada vespertina/nocturna dominical solicitada
+              } else {
+                HEDD++;
+              }
+            } else {
+              HEND++;
+            }
+          } else {
+            // Día hábil (lunes a sábado ordinario)
+            if (esDiurno) {
+              HEDO++;
+            } else {
+              HENO++;
+            }
+          }
+          curr.setMinutes(curr.getMinutes() + 1);
+        }
+      }
+
+      return {
+        key: `${emp.id}_${dateStr}`,
+        empId: emp.id,
+        empName: emp.name,
+        dateStr: dateStr,
+        dayType: getDayTypeStr(new Date(year, month - 1, day, 12, 0, 0)),
+        inTime: inTimeStr,
+        outTime: outTimeStr,
+        ordHours: (ordMins / 60).toFixed(2),
+        hedo: (HEDO / 60).toFixed(2),
+        heno: (HENO / 60).toFixed(2),
+        hedd: (HEDD / 60).toFixed(2),
+        hend: (HEND / 60).toFixed(2),
+        obs: obsStr
+      };
+    }
+
+    function recalcularRegistrosExistentes() {
+      if (timeRecords.length === 0) return;
+      timeRecords = timeRecords.map(r => {
+        const emp = employees.find(e => String(e.id) === String(r.empId)) || { id: r.empId, name: r.empName };
+        return processShiftRules(emp, r.dateStr, r.inTime, r.outTime, r.obs || '');
+      });
+      saveDataToStorage();
+    }
+
+    // --- GESTIÓN DE EMPLEADOS ---
     function saveEmployee() {
       const nameInput = document.getElementById('empName');
       const idInput = document.getElementById('empId');
@@ -270,6 +375,7 @@
       });
     }
 
+    // --- CARGA GLOBAL Y NOVEDADES ---
     function applyGlobalRecord() {
       if (employees.length === 0) return alert('Primero debes agregar al menos un empleado.');
 
@@ -360,76 +466,12 @@
       renderTable();
     }
 
-    function isFestivo(dateObj) {
-      const iso = dateObj.toISOString().split('T')[0];
-      return COLOMBIA_HOLIDAYS.has(iso);
-    }
-
-    function getDayTypeStr(dateObj) {
-      if (isFestivo(dateObj)) return 'Festivo';
-      const day = dateObj.getDay();
-      if (day === 0) return 'Domingo';
-      if (day === 6) return 'Sábado';
-      return 'Hábiles (Lun-Vie)';
-    }
-
-    function processShiftRules(emp, dateStr, inTimeStr, outTimeStr, obsStr = '') {
-      let start = new Date(`${dateStr}T${inTimeStr}:00`);
-      let end = new Date(`${dateStr}T${outTimeStr}:00`);
-      
-      if (end <= start) end.setDate(end.getDate() + 1);
-
-      let totalMinutes = Math.round((end - start) / 60000);
-      let ordinariasReq = 7 * 60;
-      
-      let ordMins = Math.min(totalMinutes, ordinariasReq);
-      let extraMins = Math.max(0, totalMinutes - ordinariasReq);
-
-      let HEDO = 0, HENO = 0, HEDD = 0, HEND = 0;
-
-      if (extraMins > 0) {
-        let extraStart = new Date(start.getTime() + ordinariasReq * 60000);
-        let curr = new Date(extraStart);
-
-        while (curr < end) {
-          let nextMinute = new Date(curr.getTime() + 60000);
-          let dayOfWeek = curr.getDay();
-          let hour = curr.getHours();
-          let isDay = hour >= 6 && hour < 21;
-          let isFest = isFestivo(curr);
-
-          if (isFest || dayOfWeek === 0) {
-            if (isDay) HEDD++; else HEND++;
-          } else {
-            if (isDay) HEDO++; else HENO++;
-          }
-          curr = nextMinute;
-        }
-      }
-
-      return {
-        key: `${emp.id}_${dateStr}`,
-        empId: emp.id,
-        empName: emp.name,
-        dateStr: dateStr,
-        dayType: getDayTypeStr(new Date(`${dateStr}T00:00:00`)),
-        inTime: inTimeStr,
-        outTime: outTimeStr,
-        ordHours: (ordMins / 60).toFixed(2),
-        hedo: (HEDO / 60).toFixed(2),
-        heno: (HENO / 60).toFixed(2),
-        hedd: (HEDD / 60).toFixed(2),
-        hend: (HEND / 60).toFixed(2),
-        obs: obsStr
-      };
-    }
-
     function renderTable() {
       const tbody = document.getElementById('recordsTable');
       tbody.innerHTML = '';
 
       if (timeRecords.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="11" class="px-4 py-4 text-center text-gray-400 italic">No hay horarios o novedades cargadas en la tabla. Registra una jornada global o individual arriba.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11" class="px-4 py-4 text-center text-gray-400 italic">No hay horarios cargados en la tabla. Registra una jornada arriba.</td></tr>`;
         return;
       }
 
@@ -448,14 +490,14 @@
             <td class="px-3 py-3 italic text-gray-500">${r.obs || '-'}</td>
             <td class="px-3 py-3 text-center space-x-2">
               <button type="button" onclick="editRecord('${r.key}')" class="text-amber-600 hover:text-amber-800 font-bold" title="Editar">✏️</button>
-              <button type="button" onclick="deleteRecord('${r.key}')" class="text-red-600 hover:text-red-800 font-bold" title="Borrar">🗑️</button>
+              <button type="button" onclick="deleteRecord('${r.key}')" class="text-red-600 hover:text-red-850 font-bold" title="Borrar">🗑️</button>
             </td>
           </tr>
         `;
       });
     }
 
-    // --- MOTOR DE DESCARGA EXCEL CON MANEJO DE ERRORES ---
+    // --- MOTOR DE DESCARGA EXCEL CON CORTE MULTIPESTAÑA ---
     function ejecutarDescargaExcel() {
       try {
         if (typeof XLSX === 'undefined') {
@@ -470,7 +512,7 @@
 
         const workbook = XLSX.utils.book_new();
 
-        // 1. Resumen General
+        // 1. Hoja Resumen General (Tabla Dinámica)
         const summaryData = [];
         const groupedByEmployee = {};
 
@@ -502,23 +544,19 @@
         });
 
         const listToExport = Object.values(groupedByEmployee);
-        if (listToExport.length === 0) {
-          summaryData.push({ 'Información': 'Sin datos registrados' });
-        } else {
-          listToExport.forEach(emp => {
-            summaryData.push({
-              'Cédula / ID': emp.id,
-              'Nombre Empleado': emp.name,
-              'Días Registrados': emp.daysWorked,
-              'Total Ordinarias (7h)': parseFloat(emp.ord.toFixed(2)),
-              'Total HEDO': parseFloat(emp.hedo.toFixed(2)),
-              'Total HENO': parseFloat(emp.heno.toFixed(2)),
-              'Total HEDD / HEDF': parseFloat(emp.hedd.toFixed(2)),
-              'Total HEND / HENF': parseFloat(emp.hend.toFixed(2)),
-              'Gran Total Horas': parseFloat((emp.ord + emp.hedo + emp.heno + emp.hedd + emp.hend).toFixed(2))
-            });
+        listToExport.forEach(emp => {
+          summaryData.push({
+            'Cédula / ID': emp.id,
+            'Nombre Empleado': emp.name,
+            'Días Registrados': emp.daysWorked,
+            'Total Ordinarias (7h)': parseFloat(emp.ord.toFixed(2)),
+            'Total HEDO': parseFloat(emp.hedo.toFixed(2)),
+            'Total HENO': parseFloat(emp.heno.toFixed(2)),
+            'Total HEDD / HEDF': parseFloat(emp.hedd.toFixed(2)),
+            'Total HEND / HENF': parseFloat(emp.hend.toFixed(2)),
+            'Gran Total Horas': parseFloat((emp.ord + emp.hedo + emp.heno + emp.hedd + emp.hend).toFixed(2))
           });
-        }
+        });
 
         const summarySheet = XLSX.utils.json_to_sheet(summaryData);
         XLSX.utils.book_append_sheet(workbook, summarySheet, "RESUMEN GENERAL");
@@ -528,8 +566,8 @@
 
         employees.forEach(emp => {
           const empRecords = timeRecords.filter(r => String(r.empId) === String(emp.id));
-          
           let empSheetData = [];
+
           if (empRecords.length > 0) {
             empSheetData = empRecords.map(r => ({
               'Fecha': r.dateStr,
@@ -567,7 +605,7 @@
             });
           } else {
             empSheetData.push({
-              'Fecha': 'Sin registros aún',
+              'Fecha': 'Sin registros',
               'Tipo Día': '-',
               'Entrada': '-',
               'Salida': '-',
@@ -576,13 +614,12 @@
               'HENO': 0,
               'HEDD / HEDF': 0,
               'HEND / HENF': 0,
-              'Observaciones': 'Empleado sin jornadas en el periodo'
+              'Observaciones': 'Sin jornadas cargadas'
             });
           }
 
           const empSheet = XLSX.utils.json_to_sheet(empSheetData);
 
-          // Nombre de pestaña válido (máx 31 caracteres, sin caracteres reservados)
           let baseTitle = emp.name.replace(/[\\*?:/[\]]/g, '').trim().substring(0, 20);
           if (!baseTitle) baseTitle = `ID_${emp.id}`;
           let finalTitle = baseTitle;
