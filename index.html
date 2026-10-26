@@ -18,15 +18,20 @@
         <div class="flex items-center gap-3">
           <h1 class="text-2xl font-bold tracking-tight">Horas · Tierra Fértil</h1>
           <span class="inline-flex items-center bg-[#2e5a3f] text-[#a7f3d0] text-xs px-2.5 py-0.5 rounded-full font-semibold border border-[#3b7c53]/40">
-            <span class="w-1.5 h-1.5 mr-1.5 bg-green-400 rounded-full"></span> Motor Minuto a Minuto (Base 7h)
+            <span class="w-1.5 h-1.5 mr-1.5 bg-green-400 rounded-full"></span> Motor V3 (HEND 6h / HENO 5h Corregido)
           </span>
         </div>
-        <p class="text-gray-300 text-sm mt-1">Registro de entradas, salidas y novedades · Reglas Colombia con corte a medianoche</p>
+        <p class="text-gray-300 text-sm mt-1">Reglas Colombia con corte dominical nocturno a medianoche · Base 7h</p>
       </div>
-      <button type="button" onclick="ejecutarDescargaExcel()" class="mt-4 md:mt-0 bg-[#3b7c53] hover:bg-[#2f6342] text-white font-bold py-2.5 px-5 rounded flex items-center shadow-md transition-all border border-[#489564]">
-        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-        Descargar Reporte en Excel (por Empleado)
-      </button>
+      <div class="flex flex-wrap gap-2 mt-4 md:mt-0">
+        <button type="button" onclick="forzarRecalculo()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 px-4 rounded shadow-md transition-all text-xs flex items-center">
+          🔄 Recalcular Registros
+        </button>
+        <button type="button" onclick="ejecutarDescargaExcel()" class="bg-[#3b7c53] hover:bg-[#2f6342] text-white font-bold py-2.5 px-4 rounded shadow-md transition-all text-xs flex items-center border border-[#489564]">
+          <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+          Descargar Reporte en Excel
+        </button>
+      </div>
     </header>
 
     <!-- Bloque 1: Gestión de Empleados -->
@@ -163,7 +168,6 @@
       if (gDate) gDate.value = hoy;
       if (nDate) nDate.value = hoy;
       
-      // Recalcular registros guardados con las nuevas reglas
       recalcularRegistrosExistentes();
       renderEmployees();
       renderTable();
@@ -192,7 +196,7 @@
       return 'Hábiles (Lun-Vie)';
     }
 
-    // --- MOTOR DE CÁLCULO DINÁMICO MINUTO A MINUTO ---
+    // --- MOTOR DE CÁLCULO REVISADO MINUTO A MINUTO ---
     function processShiftRules(emp, dateStr, inTimeStr, outTimeStr, obsStr = '') {
       const [year, month, day] = dateStr.split('-').map(Number);
       const [inH, inM] = inTimeStr.split(':').map(Number);
@@ -201,13 +205,12 @@
       let start = new Date(year, month - 1, day, inH, inM, 0);
       let end = new Date(year, month - 1, day, outH, outM, 0);
 
-      // Si la salida es menor o igual a la entrada, cruza la medianoche hacia el día siguiente
       if (end <= start) {
         end.setDate(end.getDate() + 1);
       }
 
       let totalMinutes = Math.round((end - start) / 60000);
-      let ordinariasReq = 7 * 60; // Base diaria fija de 7 horas (420 min)
+      let ordinariasReq = 7 * 60; // 7.0 horas exactas
 
       let ordMins = Math.min(totalMinutes, ordinariasReq);
       let extraMins = Math.max(0, totalMinutes - ordinariasReq);
@@ -220,31 +223,26 @@
 
         while (curr < end) {
           let hour = curr.getHours();
-          let esDiurno = hour >= 6 && hour < 21; // 06:00 a 20:59 es diurno
-          let esDomOFest = isDominicalOFestivo(curr);
+          let esDiurno = hour >= 6 && hour < 21; // 6:00 a 21:00
+          let esDomFest = isDominicalOFestivo(curr);
 
-          // Si el turno empezó un domingo o festivo por la tarde/noche y supera las 7h,
-          // las horas posteriores son dominicales hasta que el reloj marque medianoche.
-          if (esDomOFest) {
-            if (esDiurno) {
-              // Si la jornada base terminó después de las 6pm en domingo, se considera recargo/extra dominical
-              if (hour >= 18 && hour < 21) {
-                HEND++; // Regla de jornada vespertina/nocturna dominical solicitada
-              } else {
-                HEDD++;
-              }
-            } else {
+          if (esDomFest) {
+            // Regla solicitada: al cumplir las 7h en domingo y entrar en la noche/tarde (después de las 18:00),
+            // hasta las 00:00 se clasifican como HEND.
+            if (hour >= 18 || !esDiurno) {
               HEND++;
+            } else {
+              HEDD++;
             }
           } else {
-            // Día hábil (lunes a sábado ordinario)
+            // Día ordinario (ej: lunes desde las 00:00 hasta las 06:00)
             if (esDiurno) {
               HEDO++;
             } else {
               HENO++;
             }
           }
-          curr.setMinutes(curr.getMinutes() + 1);
+          curr = new Date(curr.getTime() + 60000);
         }
       }
 
@@ -266,12 +264,18 @@
     }
 
     function recalcularRegistrosExistentes() {
-      if (timeRecords.length === 0) return;
+      if (!timeRecords || timeRecords.length === 0) return;
       timeRecords = timeRecords.map(r => {
         const emp = employees.find(e => String(e.id) === String(r.empId)) || { id: r.empId, name: r.empName };
         return processShiftRules(emp, r.dateStr, r.inTime, r.outTime, r.obs || '');
       });
       saveDataToStorage();
+    }
+
+    function forzarRecalculo() {
+      recalcularRegistrosExistentes();
+      renderTable();
+      alert('Registros recalculados con éxito.');
     }
 
     // --- GESTIÓN DE EMPLEADOS ---
@@ -471,7 +475,7 @@
       tbody.innerHTML = '';
 
       if (timeRecords.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="11" class="px-4 py-4 text-center text-gray-400 italic">No hay horarios cargados en la tabla. Registra una jornada arriba.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11" class="px-4 py-4 text-center text-gray-400 italic">No hay horarios cargados en la tabla.</td></tr>`;
         return;
       }
 
@@ -497,11 +501,11 @@
       });
     }
 
-    // --- MOTOR DE DESCARGA EXCEL CON CORTE MULTIPESTAÑA ---
+    // --- MOTOR DE DESCARGA EXCEL ---
     function ejecutarDescargaExcel() {
       try {
         if (typeof XLSX === 'undefined') {
-          alert('La librería de Excel no se ha cargado. Verifica la conexión a internet.');
+          alert('La librería de Excel no se ha cargado.');
           return;
         }
 
@@ -512,7 +516,7 @@
 
         const workbook = XLSX.utils.book_new();
 
-        // 1. Hoja Resumen General (Tabla Dinámica)
+        // 1. Resumen General
         const summaryData = [];
         const groupedByEmployee = {};
 
