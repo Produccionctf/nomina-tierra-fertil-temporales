@@ -8,6 +8,10 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- SheetJS CDN -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- Firebase App & Firestore (SDK Scripts compatibles) -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 </head>
 <body class="bg-[#f3f4f6] font-sans text-gray-800">
 
@@ -17,11 +21,11 @@
       <div>
         <div class="flex items-center gap-3">
           <h1 class="text-2xl font-bold tracking-tight">Horas · Tierra Fértil</h1>
-          <span class="inline-flex items-center bg-[#2e5a3f] text-[#a7f3d0] text-xs px-2.5 py-0.5 rounded-full font-semibold border border-[#3b7c53]/40">
-            <span class="w-1.5 h-1.5 mr-1.5 bg-green-400 rounded-full"></span> Motor V3 (HEND 6h / HENO 5h Corregido)
+          <span id="syncStatus" class="inline-flex items-center bg-[#2e5a3f] text-[#a7f3d0] text-xs px-2.5 py-0.5 rounded-full font-semibold border border-[#3b7c53]/40">
+            <span class="w-1.5 h-1.5 mr-1.5 bg-yellow-400 rounded-full animate-ping"></span> Conectando Nube...
           </span>
         </div>
-        <p class="text-gray-300 text-sm mt-1">Reglas Colombia con corte dominical nocturno a medianoche · Base 7h</p>
+        <p class="text-gray-300 text-sm mt-1">Sincronización multiusuario en tiempo real · Base 7h Colombia</p>
       </div>
       <div class="flex flex-wrap gap-2 mt-4 md:mt-0">
         <button type="button" onclick="forzarRecalculo()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 px-4 rounded shadow-md transition-all text-xs flex items-center">
@@ -49,10 +53,10 @@
       </div>
     </section>
 
-    <!-- Bloque 2: Registro Global de Jornada -->
+    <!-- Bloque 2: Carga Global de Jornada -->
     <section class="bg-white p-6 rounded-lg shadow-sm border border-gray-100 border-l-4 border-[#3b7c53]">
       <h2 class="text-lg font-semibold text-[#1e3a2b] mb-2">2. Carga Global de Jornada</h2>
-      <p class="text-sm text-gray-500 mb-4">Aplica la misma fecha, horario y observaciones a <b>TODOS</b> los empleados a la vez.</p>
+      <p class="text-sm text-gray-500 mb-4">Aplica la misma fecha, horario y observaciones a <b>TODOS</b> los empleados en la nube.</p>
       
       <div class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
         <div>
@@ -83,7 +87,7 @@
         <h2 id="novTitle" class="text-lg font-semibold text-amber-800">3. Registrar / Modificar Novedad Individual</h2>
         <span id="editingBadge" class="hidden text-xs font-bold bg-amber-100 text-amber-800 px-2 py-1 rounded border border-amber-200">Editando Novedad</span>
       </div>
-      <p class="text-sm text-gray-500 mb-4">Selecciona el empleado y la fecha para cambiar o añadir un turno específico o correctivo.</p>
+      <p class="text-sm text-gray-500 mb-4">Selecciona el empleado y la fecha para cambiar o registrar turnos específicos.</p>
       
       <div class="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
         <div>
@@ -118,7 +122,7 @@
       <div class="flex justify-between items-center mb-4 border-b pb-4">
         <h2 class="text-lg font-semibold text-[#1e3a2b]">4. Consolidado Diario y Novedades</h2>
         <button type="button" onclick="clearAllData()" class="text-xs text-red-600 hover:text-red-850 font-semibold flex items-center transition underline">
-          Borrar Toda la Tabla
+          Borrar Toda la Tabla en Nube
         </button>
       </div>
       <div class="overflow-x-auto">
@@ -145,7 +149,22 @@
   </div>
 
   <script>
-    // Calendario Oficial Festivos Colombia (2025 - 2027)
+    // --- CONFIGURACIÓN DE FIREBASE FIRESTORE ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyB0YAURkDn7wbhaSYH1ZtTtjnn6j_bkkKQ",
+      authDomain: "tierra-fertil-nomina.firebaseapp.com",
+      projectId: "tierra-fertil-nomina",
+      storageBucket: "tierra-fertil-nomina.firebasestorage.app",
+      messagingSenderId: "145116110964",
+      appId: "1:145116110964:web:ea56bcc5d96a1cfa0a7121",
+      measurementId: "G-Y77HEG2PSE"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const docRef = db.collection("nomina").doc("tierra_fertil_data");
+
+    // Festivos Oficiales Colombia
     const COLOMBIA_HOLIDAYS = new Set([
       '2025-01-01', '2025-01-06', '2025-03-24', '2025-04-17', '2025-04-18', '2025-05-01',
       '2025-06-02', '2025-06-23', '2025-06-30', '2025-07-20', '2025-08-07', '2025-08-18',
@@ -167,15 +186,53 @@
       const nDate = document.getElementById('novDate');
       if (gDate) gDate.value = hoy;
       if (nDate) nDate.value = hoy;
-      
-      recalcularRegistrosExistentes();
+
       renderEmployees();
       renderTable();
+      conectarNubeFirebase();
     });
 
-    function saveDataToStorage() {
+    // Sincronización en tiempo real con Firebase Firestore
+    function conectarNubeFirebase() {
+      const syncBadge = document.getElementById('syncStatus');
+
+      docRef.onSnapshot((doc) => {
+        if (doc.exists) {
+          const data = doc.data();
+          employees = data.employees || [];
+          timeRecords = data.timeRecords || [];
+
+          // Guarda copia de respaldo local
+          localStorage.setItem('nomina_employees', JSON.stringify(employees));
+          localStorage.setItem('nomina_timeRecords', JSON.stringify(timeRecords));
+
+          renderEmployees();
+          renderTable();
+          syncBadge.innerHTML = '<span class="w-1.5 h-1.5 mr-1.5 bg-green-400 rounded-full"></span> Conectado a la Nube';
+        } else {
+          // Si el documento en la nube aún no existe, migra los datos locales
+          if (employees.length > 0 || timeRecords.length > 0) {
+            guardarEnNube();
+          }
+          syncBadge.innerHTML = '<span class="w-1.5 h-1.5 mr-1.5 bg-green-400 rounded-full"></span> Conectado a la Nube';
+        }
+      }, (error) => {
+        console.error("Error Firebase:", error);
+        syncBadge.innerHTML = '<span class="w-1.5 h-1.5 mr-1.5 bg-red-400 rounded-full"></span> Sin conexión (Modo local)';
+      });
+    }
+
+    function guardarEnNube() {
       localStorage.setItem('nomina_employees', JSON.stringify(employees));
       localStorage.setItem('nomina_timeRecords', JSON.stringify(timeRecords));
+
+      docRef.set({
+        employees: employees,
+        timeRecords: timeRecords,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true }).catch(err => {
+        console.error("Error al guardar en la nube:", err);
+      });
     }
 
     function isFestivo(dateObj) {
@@ -196,7 +253,7 @@
       return 'Hábiles (Lun-Vie)';
     }
 
-    // --- MOTOR DE CÁLCULO REVISADO MINUTO A MINUTO ---
+    // Regla de cálculo minuto a minuto (Base 7.0h)
     function processShiftRules(emp, dateStr, inTimeStr, outTimeStr, obsStr = '') {
       const [year, month, day] = dateStr.split('-').map(Number);
       const [inH, inM] = inTimeStr.split(':').map(Number);
@@ -210,7 +267,7 @@
       }
 
       let totalMinutes = Math.round((end - start) / 60000);
-      let ordinariasReq = 7 * 60; // 7.0 horas exactas
+      let ordinariasReq = 7 * 60; // 7 horas fijas
 
       let ordMins = Math.min(totalMinutes, ordinariasReq);
       let extraMins = Math.max(0, totalMinutes - ordinariasReq);
@@ -223,19 +280,16 @@
 
         while (curr < end) {
           let hour = curr.getHours();
-          let esDiurno = hour >= 6 && hour < 21; // 6:00 a 21:00
+          let esDiurno = hour >= 6 && hour < 21;
           let esDomFest = isDominicalOFestivo(curr);
 
           if (esDomFest) {
-            // Regla solicitada: al cumplir las 7h en domingo y entrar en la noche/tarde (después de las 18:00),
-            // hasta las 00:00 se clasifican como HEND.
             if (hour >= 18 || !esDiurno) {
               HEND++;
             } else {
               HEDD++;
             }
           } else {
-            // Día ordinario (ej: lunes desde las 00:00 hasta las 06:00)
             if (esDiurno) {
               HEDO++;
             } else {
@@ -263,22 +317,18 @@
       };
     }
 
-    function recalcularRegistrosExistentes() {
-      if (!timeRecords || timeRecords.length === 0) return;
+    function forzarRecalculo() {
+      if (!timeRecords || timeRecords.length === 0) return alert('No hay registros cargados para recalcular.');
       timeRecords = timeRecords.map(r => {
         const emp = employees.find(e => String(e.id) === String(r.empId)) || { id: r.empId, name: r.empName };
         return processShiftRules(emp, r.dateStr, r.inTime, r.outTime, r.obs || '');
       });
-      saveDataToStorage();
-    }
-
-    function forzarRecalculo() {
-      recalcularRegistrosExistentes();
+      guardarEnNube();
       renderTable();
-      alert('Registros recalculados con éxito.');
+      alert('Registros recalculados y sincronizados en la nube con éxito.');
     }
 
-    // --- GESTIÓN DE EMPLEADOS ---
+    // --- ACCIONES EMPLEADOS ---
     function saveEmployee() {
       const nameInput = document.getElementById('empName');
       const idInput = document.getElementById('empId');
@@ -312,7 +362,7 @@
         idInput.value = '';
       }
 
-      saveDataToStorage();
+      guardarEnNube();
       renderEmployees();
       renderTable();
     }
@@ -343,14 +393,14 @@
     }
 
     function deleteEmployee(id) {
-      if (!confirm('¿Deseas eliminar este empleado? Su historial también será removido.')) return;
+      if (!confirm('¿Deseas eliminar este empleado de la nube? Su historial también será removido.')) return;
 
       employees = employees.filter(e => e.id !== id);
       timeRecords = timeRecords.filter(r => r.empId !== id);
 
       if (document.getElementById('editEmpOriginalId').value === id) cancelEmpEdit();
 
-      saveDataToStorage();
+      guardarEnNube();
       renderEmployees();
       renderTable();
     }
@@ -379,7 +429,7 @@
       });
     }
 
-    // --- CARGA GLOBAL Y NOVEDADES ---
+    // --- ACCIONES HORARIOS ---
     function applyGlobalRecord() {
       if (employees.length === 0) return alert('Primero debes agregar al menos un empleado.');
 
@@ -402,7 +452,7 @@
         }
       });
 
-      saveDataToStorage();
+      guardarEnNube();
       renderTable();
     }
 
@@ -429,7 +479,7 @@
       }
 
       cancelNovEdit();
-      saveDataToStorage();
+      guardarEnNube();
       renderTable();
     }
 
@@ -457,16 +507,16 @@
     }
 
     function deleteRecord(key) {
-      if (!confirm('¿Deseas eliminar este registro de horario?')) return;
+      if (!confirm('¿Deseas eliminar este registro de la base de datos?')) return;
       timeRecords = timeRecords.filter(r => r.key !== key);
-      saveDataToStorage();
+      guardarEnNube();
       renderTable();
     }
 
     function clearAllData() {
-      if (!confirm('¿Seguro deseas limpiar toda la tabla de horarios? Se borrarán los registros calculados.')) return;
+      if (!confirm('¿Seguro deseas limpiar toda la tabla de horarios en la nube?')) return;
       timeRecords = [];
-      saveDataToStorage();
+      guardarEnNube();
       renderTable();
     }
 
@@ -475,7 +525,7 @@
       tbody.innerHTML = '';
 
       if (timeRecords.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="11" class="px-4 py-4 text-center text-gray-400 italic">No hay horarios cargados en la tabla.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11" class="px-4 py-4 text-center text-gray-400 italic">No hay horarios cargados en la base de datos.</td></tr>`;
         return;
       }
 
@@ -501,16 +551,16 @@
       });
     }
 
-    // --- MOTOR DE DESCARGA EXCEL ---
+    // --- MOTOR DE EXPORTACIÓN A EXCEL ---
     function ejecutarDescargaExcel() {
       try {
         if (typeof XLSX === 'undefined') {
-          alert('La librería de Excel no se ha cargado.');
+          alert('La librería de Excel no se ha cargado. Comprueba tu conexión a internet.');
           return;
         }
 
         if (employees.length === 0 && timeRecords.length === 0) {
-          alert('No hay empleados ni registros de horario agregados aún.');
+          alert('No hay datos en la nube para exportar.');
           return;
         }
 
@@ -565,7 +615,7 @@
         const summarySheet = XLSX.utils.json_to_sheet(summaryData);
         XLSX.utils.book_append_sheet(workbook, summarySheet, "RESUMEN GENERAL");
 
-        // 2. Pestañas individuales por empleado
+        // 2. Pestañas Individuales
         const sheetNamesSet = new Set(["RESUMEN GENERAL"]);
 
         employees.forEach(emp => {
