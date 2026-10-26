@@ -12,7 +12,7 @@
 <body class="bg-[#f3f4f6] font-sans text-gray-800">
 
   <div class="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
-    <!-- Encabezado inspirado en el diseño de Tierra Fértil -->
+    <!-- Encabezado Tierra Fértil -->
     <header class="bg-[#1e3a2b] text-white p-6 rounded-lg shadow-md flex flex-col md:flex-row justify-between items-center">
       <div>
         <div class="flex items-center gap-3">
@@ -21,7 +21,7 @@
             <span class="w-1.5 h-1.5 mr-1.5 bg-green-400 rounded-full"></span> GitHub App (En Línea)
           </span>
         </div>
-        <p class="text-gray-300 text-sm mt-1">Registro de entradas, salidas y observaciones del personal · Colombia Base 7.5h</p>
+        <p class="text-gray-300 text-sm mt-1">Registro de entradas, salidas y observaciones del personal · Colombia Base 7h</p>
       </div>
       <button type="button" onclick="exportToExcelSeparate()" class="mt-4 md:mt-0 bg-[#3b7c53] hover:bg-[#2f6342] text-white font-bold py-2.5 px-5 rounded flex items-center shadow-md transition-all border border-[#489564]">
         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
@@ -62,7 +62,7 @@
         </div>
         <div>
           <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Hora Salida</label>
-          <input type="time" id="globalOut" value="15:30" class="w-full border p-2 rounded focus:ring-2 focus:ring-[#3b7c53]">
+          <input type="time" id="globalOut" value="15:00" class="w-full border p-2 rounded focus:ring-2 focus:ring-[#3b7c53]">
         </div>
         <div>
           <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Observación Global</label>
@@ -126,7 +126,7 @@
               <th class="px-3 py-3">Fecha</th>
               <th class="px-3 py-3">Tipo Día</th>
               <th class="px-3 py-3">Entrada - Salida</th>
-              <th class="px-3 py-3 text-center">Horas Ord (7.5)</th>
+              <th class="px-3 py-3 text-center">Horas Ord (7h)</th>
               <th class="px-3 py-3 text-center bg-blue-50/40">HEDO</th>
               <th class="px-3 py-3 text-center bg-blue-50/40">HENO</th>
               <th class="px-3 py-3 text-center bg-purple-50/40">HEDD / HEDF</th>
@@ -238,7 +238,7 @@
     }
 
     function deleteEmployee(id) {
-      if (!confirm('¿Deseas eliminar este empleado?')) return;
+      if (!confirm('¿Deseas eliminar este empleado? Su historial también será removido.')) return;
 
       employees = employees.filter(e => e.id !== id);
       timeRecords = timeRecords.filter(r => r.empId !== id);
@@ -365,7 +365,7 @@
       renderTable();
     }
 
-    // --- EVALUACIÓN Y MOTOR DE CÁLCULO ---
+    // --- EVALUACIÓN Y MOTOR DE CÁLCULO (Base 7h) ---
     function isFestivo(dateObj) {
       const iso = dateObj.toISOString().split('T')[0];
       return COLOMBIA_HOLIDAYS.has(iso);
@@ -386,7 +386,7 @@
       if (end <= start) end.setDate(end.getDate() + 1);
 
       let totalMinutes = Math.round((end - start) / 60000);
-      let ordinariasReq = 7.5 * 60;
+      let ordinariasReq = 7 * 60; // Base diaria de 7 horas (420 minutos)
       
       let ordMins = Math.min(totalMinutes, ordinariasReq);
       let extraMins = Math.max(0, totalMinutes - ordinariasReq);
@@ -461,7 +461,7 @@
       });
     }
 
-    // --- MOTOR DE DESCARGA AVANZADO (HOJAS SEPARADAS Y RESUMEN DINÁMICO) ---
+    // --- MOTOR DE DESCARGA AVANZADO (Base 7h) ---
     function exportToExcelSeparate() {
       if (timeRecords.length === 0) return alert('No hay registros cargados para exportar.');
 
@@ -495,7 +495,7 @@
           'Cédula / ID': emp.id,
           'Nombre Empleado': emp.name,
           'Días Registrados': emp.daysWorked,
-          'Total Ordinarias (7.5h)': parseFloat(emp.ord.toFixed(2)),
+          'Total Ordinarias (7h)': parseFloat(emp.ord.toFixed(2)),
           'Total HEDO': parseFloat(emp.hedo.toFixed(2)),
           'Total HENO': parseFloat(emp.heno.toFixed(2)),
           'Total HEDD / HEDF': parseFloat(emp.hedd.toFixed(2)),
@@ -528,7 +528,7 @@
             'Tipo de Día': r.dayType,
             'Hora Entrada': r.inTime,
             'Hora Salida': r.outTime,
-            'Horas Ordinarias (7.5h)': parseFloat(r.ordHours),
+            'Horas Ordinarias (7h)': parseFloat(r.ordHours),
             'HEDO': parseFloat(r.hedo),
             'HENO': parseFloat(r.heno),
             'HEDD / HEDF': parseFloat(r.hedd),
@@ -551,7 +551,7 @@
             'Tipo de Día': '',
             'Hora Entrada': '',
             'Hora Salida': '',
-            'Horas Ordinarias (7.5h)': parseFloat(totalOrd.toFixed(2)),
+            'Horas Ordinarias (7h)': parseFloat(totalOrd.toFixed(2)),
             'HEDO': parseFloat(totalHedo.toFixed(2)),
             'HENO': parseFloat(totalHeno.toFixed(2)),
             'HEDD / HEDF': parseFloat(totalHedd.toFixed(2)),
@@ -562,7 +562,6 @@
           const empSheet = XLSX.utils.json_to_sheet(empSheetData);
           autoWidth(empSheet, empSheetData);
 
-          // Nombre de pestaña corto, ya que Excel limita a 31 caracteres
           const cleanName = emp.name.substring(0, 20).replace(/[\\*?:/[\]]/g, '');
           XLSX.utils.book_append_sheet(workbook, empSheet, `${cleanName} (${emp.id})`);
         }
