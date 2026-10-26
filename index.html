@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sistema de Horarios y Nómina - Tierra Fértil</title>
-  <!-- Tailwind CSS CDN para el diseño -->
+  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Library SheetJS para exportación avanzada a Excel -->
+  <!-- Library SheetJS -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body class="bg-[#f3f4f6] font-sans text-gray-800">
@@ -23,7 +23,7 @@
         </div>
         <p class="text-gray-300 text-sm mt-1">Registro de entradas, salidas y observaciones del personal · Colombia Base 7h</p>
       </div>
-      <button type="button" onclick="exportToExcelSeparate()" class="mt-4 md:mt-0 bg-[#3b7c53] hover:bg-[#2f6342] text-white font-bold py-2.5 px-5 rounded flex items-center shadow-md transition-all border border-[#489564]">
+      <button type="button" onclick="ejecutarDescargaExcel()" class="mt-4 md:mt-0 bg-[#3b7c53] hover:bg-[#2f6342] text-white font-bold py-2.5 px-5 rounded flex items-center shadow-md transition-all border border-[#489564]">
         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
         Descargar Reporte en Excel (por Empleado)
       </button>
@@ -40,9 +40,7 @@
         <button type="button" id="btnCancelEmpEdit" onclick="cancelEmpEdit()" class="hidden bg-gray-500 text-white px-3 py-2 rounded hover:bg-gray-600 font-semibold transition">Cancelar</button>
       </div>
       <div class="overflow-x-auto mt-2">
-        <div id="employeeList" class="flex flex-wrap gap-2">
-          <!-- Chips de empleados -->
-        </div>
+        <div id="employeeList" class="flex flex-wrap gap-2"></div>
       </div>
     </section>
 
@@ -105,7 +103,7 @@
         </div>
         <div class="flex gap-2">
           <button type="button" id="btnSaveNov" onclick="applyIndividualNovedad()" class="w-full bg-amber-600 text-white py-2 px-4 rounded font-bold hover:bg-amber-700 transition">Guardar Novedad</button>
-          <button type="button" id="btnCancelNovEdit" onclick="cancelNovEdit()" class="hidden bg-gray-400 text-white px-2 py-2 rounded hover:bg-gray-500 transition">✏️</button>
+          <button type="button" id="btnCancelNovEdit" onclick="cancelNovEdit()" class="hidden bg-gray-400 text-white px-2 py-2 rounded hover:bg-gray-500 transition">Cancelar</button>
         </div>
       </div>
     </section>
@@ -135,16 +133,13 @@
               <th class="px-3 py-3 text-center">Acciones</th>
             </tr>
           </thead>
-          <tbody id="recordsTable">
-            <!-- Filas dinámicas -->
-          </tbody>
+          <tbody id="recordsTable"></tbody>
         </table>
       </div>
     </section>
   </div>
 
   <script>
-    // --- Festivos Colombia (2025, 2026, 2027) con Ley Emiliani ---
     const COLOMBIA_HOLIDAYS = new Set([
       '2025-01-01', '2025-01-06', '2025-03-24', '2025-04-17', '2025-04-18', '2025-05-01',
       '2025-06-02', '2025-06-23', '2025-06-30', '2025-07-20', '2025-08-07', '2025-08-18',
@@ -157,13 +152,15 @@
       '2027-08-16', '2027-10-18', '2027-11-01', '2027-11-15', '2027-12-08', '2027-12-25'
     ]);
 
-    // Variables de Estado con LocalStorage (No se borran)
     let employees = JSON.parse(localStorage.getItem('nomina_employees')) || [];
     let timeRecords = JSON.parse(localStorage.getItem('nomina_timeRecords')) || [];
 
     document.addEventListener("DOMContentLoaded", () => {
-      document.getElementById('globalDate').value = new Date().toISOString().split('T')[0];
-      document.getElementById('novDate').value = new Date().toISOString().split('T')[0];
+      const hoy = new Date().toISOString().split('T')[0];
+      const gDate = document.getElementById('globalDate');
+      const nDate = document.getElementById('novDate');
+      if (gDate) gDate.value = hoy;
+      if (nDate) nDate.value = hoy;
       renderEmployees();
       renderTable();
     });
@@ -173,7 +170,6 @@
       localStorage.setItem('nomina_timeRecords', JSON.stringify(timeRecords));
     }
 
-    // --- GESTIÓN DE EMPLEADOS ---
     function saveEmployee() {
       const nameInput = document.getElementById('empName');
       const idInput = document.getElementById('empId');
@@ -222,7 +218,7 @@
 
       const btn = document.getElementById('btnSaveEmp');
       btn.textContent = 'Guardar Cambios';
-      btn.className = 'bg-amber-600 hover:bg-amber-700 text-white px-5 py-2 rounded font-semibold transition-all duration-200';
+      btn.className = 'bg-amber-600 hover:bg-amber-700 text-white px-5 py-2 rounded font-semibold transition-all shadow-sm';
       document.getElementById('btnCancelEmpEdit').classList.remove('hidden');
     }
 
@@ -274,7 +270,6 @@
       });
     }
 
-    // --- CARGA GLOBAL Y NOVEDADES ---
     function applyGlobalRecord() {
       if (employees.length === 0) return alert('Primero debes agregar al menos un empleado.');
 
@@ -365,7 +360,6 @@
       renderTable();
     }
 
-    // --- EVALUACIÓN Y MOTOR DE CÁLCULO (Base 7h) ---
     function isFestivo(dateObj) {
       const iso = dateObj.toISOString().split('T')[0];
       return COLOMBIA_HOLIDAYS.has(iso);
@@ -386,7 +380,7 @@
       if (end <= start) end.setDate(end.getDate() + 1);
 
       let totalMinutes = Math.round((end - start) / 60000);
-      let ordinariasReq = 7 * 60; // Base diaria de 7 horas (420 minutos)
+      let ordinariasReq = 7 * 60;
       
       let ordMins = Math.min(totalMinutes, ordinariasReq);
       let extraMins = Math.max(0, totalMinutes - ordinariasReq);
@@ -435,7 +429,7 @@
       tbody.innerHTML = '';
 
       if (timeRecords.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="11" class="px-4 py-4 text-center text-gray-400 italic">No hay horarios o novedades cargadas en la tabla.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11" class="px-4 py-4 text-center text-gray-400 italic">No hay horarios o novedades cargadas en la tabla. Registra una jornada global o individual arriba.</td></tr>`;
         return;
       }
 
@@ -461,115 +455,154 @@
       });
     }
 
-    // --- MOTOR DE DESCARGA AVANZADO (Base 7h) ---
-    function exportToExcelSeparate() {
-      if (timeRecords.length === 0) return alert('No hay registros cargados para exportar.');
+    // --- MOTOR DE DESCARGA EXCEL CON MANEJO DE ERRORES ---
+    function ejecutarDescargaExcel() {
+      try {
+        if (typeof XLSX === 'undefined') {
+          alert('La librería de Excel no se ha cargado. Verifica la conexión a internet.');
+          return;
+        }
 
-      const workbook = XLSX.utils.book_new();
+        if (employees.length === 0 && timeRecords.length === 0) {
+          alert('No hay empleados ni registros de horario agregados aún.');
+          return;
+        }
 
-      // 1. Crear Hoja 1: Resumen General de todo el personal (Tabla Dinámica)
-      const summaryData = [];
-      const groupedByEmployee = {};
+        const workbook = XLSX.utils.book_new();
 
-      timeRecords.forEach(r => {
-        if (!groupedByEmployee[r.empId]) {
-          groupedByEmployee[r.empId] = {
-            id: r.empId,
-            name: r.empName,
+        // 1. Resumen General
+        const summaryData = [];
+        const groupedByEmployee = {};
+
+        employees.forEach(emp => {
+          groupedByEmployee[emp.id] = {
+            id: emp.id,
+            name: emp.name,
             ord: 0, hedo: 0, heno: 0, hedd: 0, hend: 0,
             daysWorked: 0
           };
-        }
-        const emp = groupedByEmployee[r.empId];
-        emp.ord += parseFloat(r.ordHours);
-        emp.hedo += parseFloat(r.hedo);
-        emp.heno += parseFloat(r.heno);
-        emp.hedd += parseFloat(r.hedd);
-        emp.hend += parseFloat(r.hend);
-        emp.daysWorked += 1;
-      });
-
-      // Pasar a array para el Excel
-      Object.values(groupedByEmployee).forEach(emp => {
-        summaryData.push({
-          'Cédula / ID': emp.id,
-          'Nombre Empleado': emp.name,
-          'Días Registrados': emp.daysWorked,
-          'Total Ordinarias (7h)': parseFloat(emp.ord.toFixed(2)),
-          'Total HEDO': parseFloat(emp.hedo.toFixed(2)),
-          'Total HENO': parseFloat(emp.heno.toFixed(2)),
-          'Total HEDD / HEDF': parseFloat(emp.hedd.toFixed(2)),
-          'Total HEND / HENF': parseFloat(emp.hend.toFixed(2)),
-          'Gran Total Horas': parseFloat((emp.ord + emp.hedo + emp.heno + emp.hedd + emp.hend).toFixed(2))
         });
-      });
 
-      // Crear la hoja Resumen
-      const summarySheet = XLSX.utils.json_to_sheet(summaryData);
-      
-      // Auto-ancho de columnas
-      const autoWidth = (ws, data) => {
-        const objectKeys = Object.keys(data[0] || {});
-        ws['!cols'] = objectKeys.map(key => ({
-          wch: Math.max(...data.map(obj => (obj[key] !== null && obj[key] !== undefined ? obj[key].toString().length : 0)).concat([key.length])) + 2
-        }));
-      };
-      
-      autoWidth(summarySheet, summaryData);
-      XLSX.utils.book_append_sheet(workbook, summarySheet, "RESUMEN GENERAL");
+        timeRecords.forEach(r => {
+          if (!groupedByEmployee[r.empId]) {
+            groupedByEmployee[r.empId] = {
+              id: r.empId,
+              name: r.empName,
+              ord: 0, hedo: 0, heno: 0, hedd: 0, hend: 0,
+              daysWorked: 0
+            };
+          }
+          const emp = groupedByEmployee[r.empId];
+          emp.ord += parseFloat(r.ordHours) || 0;
+          emp.hedo += parseFloat(r.hedo) || 0;
+          emp.heno += parseFloat(r.heno) || 0;
+          emp.hedd += parseFloat(r.hedd) || 0;
+          emp.hend += parseFloat(r.hend) || 0;
+          emp.daysWorked += 1;
+        });
 
-      // 2. Crear una pestaña independiente por cada empleado activo
-      employees.forEach(emp => {
-        const empRecords = timeRecords.filter(r => r.empId === emp.id);
-        
-        if (empRecords.length > 0) {
-          const empSheetData = empRecords.map(r => ({
-            'Fecha Registrada': r.dateStr,
-            'Tipo de Día': r.dayType,
-            'Hora Entrada': r.inTime,
-            'Hora Salida': r.outTime,
-            'Horas Ordinarias (7h)': parseFloat(r.ordHours),
-            'HEDO': parseFloat(r.hedo),
-            'HENO': parseFloat(r.heno),
-            'HEDD / HEDF': parseFloat(r.hedd),
-            'HEND / HENF': parseFloat(r.hend),
-            'Observaciones / Novedades': r.obs || ''
-          }));
-
-          // Añadir Fila de Sumatoria Total al final
-          let totalOrd = 0, totalHedo = 0, totalHeno = 0, totalHedd = 0, totalHend = 0;
-          empRecords.forEach(r => {
-            totalOrd += parseFloat(r.ordHours);
-            totalHedo += parseFloat(r.hedo);
-            totalHeno += parseFloat(r.heno);
-            totalHedd += parseFloat(r.hedd);
-            totalHend += parseFloat(r.hend);
+        const listToExport = Object.values(groupedByEmployee);
+        if (listToExport.length === 0) {
+          summaryData.push({ 'Información': 'Sin datos registrados' });
+        } else {
+          listToExport.forEach(emp => {
+            summaryData.push({
+              'Cédula / ID': emp.id,
+              'Nombre Empleado': emp.name,
+              'Días Registrados': emp.daysWorked,
+              'Total Ordinarias (7h)': parseFloat(emp.ord.toFixed(2)),
+              'Total HEDO': parseFloat(emp.hedo.toFixed(2)),
+              'Total HENO': parseFloat(emp.heno.toFixed(2)),
+              'Total HEDD / HEDF': parseFloat(emp.hedd.toFixed(2)),
+              'Total HEND / HENF': parseFloat(emp.hend.toFixed(2)),
+              'Gran Total Horas': parseFloat((emp.ord + emp.hedo + emp.heno + emp.hedd + emp.hend).toFixed(2))
+            });
           });
+        }
 
-          empSheetData.push({
-            'Fecha Registrada': 'TOTALES',
-            'Tipo de Día': '',
-            'Hora Entrada': '',
-            'Hora Salida': '',
-            'Horas Ordinarias (7h)': parseFloat(totalOrd.toFixed(2)),
-            'HEDO': parseFloat(totalHedo.toFixed(2)),
-            'HENO': parseFloat(totalHeno.toFixed(2)),
-            'HEDD / HEDF': parseFloat(totalHedd.toFixed(2)),
-            'HEND / HENF': parseFloat(totalHend.toFixed(2)),
-            'Observaciones / Novedades': 'Suma Total Acumulada'
-          });
+        const summarySheet = XLSX.utils.json_to_sheet(summaryData);
+        XLSX.utils.book_append_sheet(workbook, summarySheet, "RESUMEN GENERAL");
+
+        // 2. Pestañas individuales por empleado
+        const sheetNamesSet = new Set(["RESUMEN GENERAL"]);
+
+        employees.forEach(emp => {
+          const empRecords = timeRecords.filter(r => String(r.empId) === String(emp.id));
+          
+          let empSheetData = [];
+          if (empRecords.length > 0) {
+            empSheetData = empRecords.map(r => ({
+              'Fecha': r.dateStr,
+              'Tipo Día': r.dayType,
+              'Entrada': r.inTime,
+              'Salida': r.outTime,
+              'Horas Ord (7h)': parseFloat(r.ordHours) || 0,
+              'HEDO': parseFloat(r.hedo) || 0,
+              'HENO': parseFloat(r.heno) || 0,
+              'HEDD / HEDF': parseFloat(r.hedd) || 0,
+              'HEND / HENF': parseFloat(r.hend) || 0,
+              'Observaciones': r.obs || ''
+            }));
+
+            let totalOrd = 0, totalHedo = 0, totalHeno = 0, totalHedd = 0, totalHend = 0;
+            empRecords.forEach(r => {
+              totalOrd += parseFloat(r.ordHours) || 0;
+              totalHedo += parseFloat(r.hedo) || 0;
+              totalHeno += parseFloat(r.heno) || 0;
+              totalHedd += parseFloat(r.hedd) || 0;
+              totalHend += parseFloat(r.hend) || 0;
+            });
+
+            empSheetData.push({
+              'Fecha': 'TOTALES',
+              'Tipo Día': '',
+              'Entrada': '',
+              'Salida': '',
+              'Horas Ord (7h)': parseFloat(totalOrd.toFixed(2)),
+              'HEDO': parseFloat(totalHedo.toFixed(2)),
+              'HENO': parseFloat(totalHeno.toFixed(2)),
+              'HEDD / HEDF': parseFloat(totalHedd.toFixed(2)),
+              'HEND / HENF': parseFloat(totalHend.toFixed(2)),
+              'Observaciones': 'Suma Total Acumulada'
+            });
+          } else {
+            empSheetData.push({
+              'Fecha': 'Sin registros aún',
+              'Tipo Día': '-',
+              'Entrada': '-',
+              'Salida': '-',
+              'Horas Ord (7h)': 0,
+              'HEDO': 0,
+              'HENO': 0,
+              'HEDD / HEDF': 0,
+              'HEND / HENF': 0,
+              'Observaciones': 'Empleado sin jornadas en el periodo'
+            });
+          }
 
           const empSheet = XLSX.utils.json_to_sheet(empSheetData);
-          autoWidth(empSheet, empSheetData);
 
-          const cleanName = emp.name.substring(0, 20).replace(/[\\*?:/[\]]/g, '');
-          XLSX.utils.book_append_sheet(workbook, empSheet, `${cleanName} (${emp.id})`);
-        }
-      });
+          // Nombre de pestaña válido (máx 31 caracteres, sin caracteres reservados)
+          let baseTitle = emp.name.replace(/[\\*?:/[\]]/g, '').trim().substring(0, 20);
+          if (!baseTitle) baseTitle = `ID_${emp.id}`;
+          let finalTitle = baseTitle;
+          let counter = 1;
+          while (sheetNamesSet.has(finalTitle.toUpperCase())) {
+            finalTitle = `${baseTitle.substring(0, 17)}_${counter}`;
+            counter++;
+          }
+          sheetNamesSet.add(finalTitle.toUpperCase());
 
-      // Descargar Archivo Excel consolidado
-      const today = new Date().toISOString().split('T')[0];
-      XLSX.writeFile(workbook, `Reporte_Nomina_Separado_TierraFertil_${today}.xlsx`);
+          XLSX.utils.book_append_sheet(workbook, empSheet, finalTitle);
+        });
+
+        const today = new Date().toISOString().split('T')[0];
+        XLSX.writeFile(workbook, `Reporte_Nomina_TierraFertil_${today}.xlsx`);
+
+      } catch (err) {
+        console.error('Error al generar Excel:', err);
+        alert('Ocurrió un error al preparar el Excel: ' + err.message);
+      }
     }
   </script>
 </body>
