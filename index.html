@@ -25,7 +25,7 @@
             <span class="w-1.5 h-1.5 mr-1.5 bg-yellow-400 rounded-full animate-ping"></span> Conectando Nube...
           </span>
         </div>
-        <p class="text-gray-300 text-sm mt-1">Registro global de turnos y liquidación horaria · Base 7h Colombia</p>
+        <p class="text-gray-300 text-sm mt-1">Registro de jornadas operativas · Base 7h Colombia con corte dominical</p>
       </div>
       <div class="flex flex-wrap gap-2 mt-4 md:mt-0">
         <button type="button" onclick="forzarRecalculo()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 px-4 rounded shadow-md transition-all text-xs flex items-center">
@@ -33,71 +33,78 @@
         </button>
         <button type="button" onclick="ejecutarDescargaExcel()" class="bg-[#3b7c53] hover:bg-[#2f6342] text-white font-bold py-2.5 px-4 rounded shadow-md transition-all text-xs flex items-center border border-[#489564]">
           <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-          Descargar Reporte en Excel
+          Descargar Excel Plantilla Oficial
         </button>
       </div>
     </header>
 
-    <!-- Registro Global de Jornada -->
+    <!-- Registro de Jornada -->
     <section class="bg-white p-6 rounded-lg shadow-sm border border-gray-100 border-l-4 border-[#3b7c53]">
       <div class="flex justify-between items-center mb-2">
         <h2 id="formTitle" class="text-lg font-semibold text-[#1e3a2b]">Registro de Jornada</h2>
         <span id="editingBadge" class="hidden text-xs font-bold bg-amber-100 text-amber-800 px-2.5 py-1 rounded border border-amber-200">Modificando Jornada</span>
       </div>
-      <p class="text-sm text-gray-500 mb-4">Ingresa la fecha, horas de entrada y salida para calcular automáticamente ordinarias y extras.</p>
+      <p class="text-sm text-gray-500 mb-4">Ingresa la fecha, el grupo (opcional), horarios y observaciones para liquidar las horas.</p>
       
       <input type="hidden" id="editRecordId" value="">
 
-      <div class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+      <div class="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
         <div>
-          <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Fecha Entrada</label>
+          <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Fecha</label>
           <input type="date" id="shiftDate" class="w-full border p-2 rounded focus:ring-2 focus:ring-[#3b7c53]">
         </div>
         <div>
+          <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Grupo (Opcional)</label>
+          <input type="text" id="shiftGroup" placeholder="Ej: GRUPO 1" class="w-full border p-2 rounded focus:ring-2 focus:ring-[#3b7c53]">
+        </div>
+        <div>
           <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Hora Entrada</label>
-          <input type="time" id="shiftIn" value="07:00" class="w-full border p-2 rounded focus:ring-2 focus:ring-[#3b7c53]">
+          <input type="time" id="shiftIn" value="17:00" class="w-full border p-2 rounded focus:ring-2 focus:ring-[#3b7c53]">
         </div>
         <div>
           <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Hora Salida</label>
-          <input type="time" id="shiftOut" value="14:00" class="w-full border p-2 rounded focus:ring-2 focus:ring-[#3b7c53]">
+          <input type="time" id="shiftOut" value="05:00" class="w-full border p-2 rounded focus:ring-2 focus:ring-[#3b7c53]">
         </div>
         <div>
           <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Observación</label>
-          <input type="text" id="shiftObs" placeholder="Ej: Turno general, Novedad operativa" class="w-full border p-2 rounded focus:ring-2 focus:ring-[#3b7c53]">
+          <input type="text" id="shiftObs" placeholder="Ej: Cierre de quincena" class="w-full border p-2 rounded focus:ring-2 focus:ring-[#3b7c53]">
         </div>
         <div class="flex gap-2">
-          <button type="button" id="btnSaveShift" onclick="guardarJornada()" class="w-full bg-[#1c4d31] text-white py-2 px-4 rounded font-bold hover:bg-[#133821] transition shadow">
-            Guardar Jornada
+          <button type="button" id="btnSaveShift" onclick="guardarJornada()" class="w-full bg-[#1c4d31] text-white py-2 px-3 rounded font-bold hover:bg-[#133821] transition shadow text-sm">
+            Guardar
           </button>
-          <button type="button" id="btnCancelEdit" onclick="cancelarEdicion()" class="hidden bg-gray-400 text-white px-3 py-2 rounded hover:bg-gray-500 transition font-bold">
-            Cancelar
+          <button type="button" id="btnCancelEdit" onclick="cancelarEdicion()" class="hidden bg-gray-400 text-white px-2.5 py-2 rounded hover:bg-gray-500 transition font-bold text-sm">
+            ✕
           </button>
         </div>
       </div>
     </section>
 
-    <!-- Visualización y Desglose de Turnos -->
+    <!-- Visualización de la Tabla -->
     <section class="bg-white p-6 rounded-lg shadow-sm border border-gray-150">
       <div class="flex justify-between items-center mb-4 border-b pb-4">
-        <h2 class="text-lg font-semibold text-[#1e3a2b]">Consolidado de Jornadas</h2>
+        <h2 class="text-lg font-semibold text-[#1e3a2b]">Planilla de Turnos y Liquidación (Base 7h)</h2>
         <button type="button" onclick="clearAllData()" class="text-xs text-red-600 hover:text-red-850 font-semibold flex items-center transition underline">
           Borrar Toda la Tabla en Nube
         </button>
       </div>
       <div class="overflow-x-auto">
-        <table class="w-full text-sm text-left text-gray-600 border border-gray-200 rounded-lg">
-          <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
+        <table class="w-full text-xs md:text-sm text-left text-gray-600 border border-gray-200 rounded-lg">
+          <thead class="text-[11px] text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
             <tr>
               <th class="px-3 py-3">Fecha</th>
-              <th class="px-3 py-3">Tipo Día</th>
+              <th class="px-2 py-3">Día</th>
+              <th class="px-2 py-3 text-center">Festivo</th>
+              <th class="px-2 py-3">Grupo</th>
               <th class="px-3 py-3">Entrada - Salida</th>
-              <th class="px-3 py-3 text-center">Horas Ord (7h)</th>
-              <th class="px-3 py-3 text-center bg-blue-50/40">HEDO</th>
-              <th class="px-3 py-3 text-center bg-blue-50/40">HENO</th>
-              <th class="px-3 py-3 text-center bg-purple-50/40">HEDD / HEDF</th>
-              <th class="px-3 py-3 text-center bg-purple-50/40">HEND / HENF</th>
-              <th class="px-3 py-3">Observación</th>
-              <th class="px-3 py-3 text-center">Acciones</th>
+              <th class="px-2 py-3 text-center">Horas Normales</th>
+              <th class="px-2 py-3 text-center bg-blue-50/40">Extra Diurna Ord</th>
+              <th class="px-2 py-3 text-center bg-blue-50/40">Extra Noct Ord</th>
+              <th class="px-2 py-3 text-center bg-purple-50/40">Extra Diurna (Dom)</th>
+              <th class="px-2 py-3 text-center bg-purple-50/40">Extra Noct Dom</th>
+              <th class="px-2 py-3 text-center font-bold">Total Horas</th>
+              <th class="px-3 py-3">Observaciones</th>
+              <th class="px-2 py-3 text-center">Acciones</th>
             </tr>
           </thead>
           <tbody id="recordsTable"></tbody>
@@ -107,7 +114,7 @@
   </div>
 
   <script>
-    // --- CONFIGURACIÓN DE FIREBASE FIRESTORE ---
+    // --- FIREBASE CONFIGURATION ---
     const firebaseConfig = {
       apiKey: "AIzaSyB0YAURkDn7wbhaSYH1ZtTtjnn6j_bkkKQ",
       authDomain: "tierra-fertil-nomina.firebaseapp.com",
@@ -135,6 +142,8 @@
       '2027-08-16', '2027-10-18', '2027-11-01', '2027-11-15', '2027-12-08', '2027-12-25'
     ]);
 
+    const DIAS_SEMANA = ['DOMINGO', 'LUNES', 'MARTES', 'MIÉRCOLES', 'JUEVES', 'VIERNES', 'SÁBADO'];
+
     let timeRecords = JSON.parse(localStorage.getItem('nomina_timeRecords_global')) || [];
 
     document.addEventListener("DOMContentLoaded", () => {
@@ -152,11 +161,9 @@
       docRef.onSnapshot((doc) => {
         if (doc.exists) {
           const data = doc.data();
-          // Soporte tanto para formato global nuevo como migración de registros previos
           if (data.timeRecordsGlobal) {
             timeRecords = data.timeRecordsGlobal;
           } else if (data.timeRecords && data.timeRecords.length > 0) {
-            // Si venía del formato anterior con empleados, unifica por fecha/horario
             timeRecords = normalizarRegistrosAnteriores(data.timeRecords);
           } else {
             timeRecords = [];
@@ -182,11 +189,8 @@
         if (!unicos.has(clave)) {
           unicos.set(clave, {
             id: 'id_' + Math.random().toString(36).substr(2, 9),
-            dateStr: r.dateStr,
-            inTime: r.inTime,
-            outTime: r.outTime,
-            obs: r.obs || '',
-            ...calcularTurno(r.dateStr, r.inTime, r.outTime, r.obs || '')
+            group: r.group || '',
+            ...calcularTurno(r.dateStr, r.inTime, r.outTime, r.obs || '', r.group || '')
           });
         }
       });
@@ -195,7 +199,6 @@
 
     function guardarEnNube() {
       localStorage.setItem('nomina_timeRecords_global', JSON.stringify(timeRecords));
-
       docRef.set({
         timeRecordsGlobal: timeRecords,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -215,18 +218,24 @@
       return dateObj.getDay() === 0 || isFestivo(dateObj);
     }
 
-    function getDayTypeStr(dateObj) {
-      if (isFestivo(dateObj)) return 'Festivo';
-      if (dateObj.getDay() === 0) return 'Domingo';
-      if (dateObj.getDay() === 6) return 'Sábado';
-      return 'Hábiles (Lun-Vie)';
+    function formatearHora12(timeStr) {
+      if (!timeStr) return '';
+      const [h, m] = timeStr.split(':').map(Number);
+      const ampm = h >= 12 ? 'p. m.' : 'a. m.';
+      let h12 = h % 12;
+      if (h12 === 0) h12 = 12;
+      return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
     }
 
     // --- MOTOR DE CÁLCULO BASE 7H MINUTO A MINUTO ---
-    function calcularTurno(dateStr, inTimeStr, outTimeStr, obsStr = '') {
+    function calcularTurno(dateStr, inTimeStr, outTimeStr, obsStr = '', groupStr = '') {
       const [year, month, day] = dateStr.split('-').map(Number);
       const [inH, inM] = inTimeStr.split(':').map(Number);
       const [outH, outM] = outTimeStr.split(':').map(Number);
+
+      const fechaEntradaObj = new Date(year, month - 1, day, 12, 0, 0);
+      const diaSemana = DIAS_SEMANA[fechaEntradaObj.getDay()];
+      const esFest = isFestivo(fechaEntradaObj);
 
       let start = new Date(year, month - 1, day, inH, inM, 0);
       let end = new Date(year, month - 1, day, outH, outM, 0);
@@ -236,7 +245,7 @@
       }
 
       let totalMinutes = Math.round((end - start) / 60000);
-      let ordinariasReq = 7 * 60; // 7.0 horas ordinarias fijas
+      let ordinariasReq = 7 * 60; // Base exacta de 7 horas normales
 
       let ordMins = Math.min(totalMinutes, ordinariasReq);
       let extraMins = Math.max(0, totalMinutes - ordinariasReq);
@@ -249,18 +258,18 @@
 
         while (curr < end) {
           let hour = curr.getHours();
-          let esDiurno = hour >= 6 && hour < 21; // 6:00 a 21:00
+          let esDiurno = hour >= 6 && hour < 21; // 6:00 a 20:59 es diurno
           let esDomFest = isDominicalOFestivo(curr);
 
           if (esDomFest) {
-            // Regla nocturna dominical a partir de las 18:00 o fuera del rango diurno
+            // Horas extras del domingo en la tarde/noche (desde las 18:00 o fuera de 6-21)
             if (hour >= 18 || !esDiurno) {
               HEND++;
             } else {
               HEDD++;
             }
           } else {
-            // Día hábil ordinario
+            // Día hábil ordinario (lunes a sábado ordinario)
             if (esDiurno) {
               HEDO++;
             } else {
@@ -271,16 +280,32 @@
         }
       }
 
+      const ordH = ordMins / 60;
+      const hedoH = HEDO / 60;
+      const henoH = HENO / 60;
+      const heddH = HEDD / 60;
+      const hendH = HEND / 60;
+      const totalH = (totalMinutes / 60);
+
+      // Formato fecha DD/MM/AAAA para el reporte
+      const fechaFormateada = `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
+
       return {
         dateStr: dateStr,
-        dayType: getDayTypeStr(new Date(year, month - 1, day, 12, 0, 0)),
+        fechaDisplay: fechaFormateada,
+        diaNombre: diaSemana,
+        festivoStr: esFest ? 'SÍ' : 'NO',
+        group: groupStr || '',
         inTime: inTimeStr,
         outTime: outTimeStr,
-        ordHours: (ordMins / 60).toFixed(2),
-        hedo: (HEDO / 60).toFixed(2),
-        heno: (HENO / 60).toFixed(2),
-        hedd: (HEDD / 60).toFixed(2),
-        hend: (HEND / 60).toFixed(2),
+        inTime12: formatearHora12(inTimeStr),
+        outTime12: formatearHora12(outTimeStr),
+        ordHours: parseFloat(ordH.toFixed(2)),
+        hedo: parseFloat(hedoH.toFixed(2)),
+        heno: parseFloat(henoH.toFixed(2)),
+        hedd: parseFloat(heddH.toFixed(2)),
+        hend: parseFloat(hendH.toFixed(2)),
+        totalHours: parseFloat(totalH.toFixed(2)),
         obs: obsStr
       };
     }
@@ -288,6 +313,7 @@
     // --- ACCIONES DE JORNADA ---
     function guardarJornada() {
       const dateStr = document.getElementById('shiftDate').value;
+      const groupStr = document.getElementById('shiftGroup').value.trim();
       const inTime = document.getElementById('shiftIn').value;
       const outTime = document.getElementById('shiftOut').value;
       const obs = document.getElementById('shiftObs').value.trim();
@@ -297,7 +323,7 @@
         return alert('Por favor ingresa fecha, hora de entrada y hora de salida.');
       }
 
-      const calculo = calcularTurno(dateStr, inTime, outTime, obs);
+      const calculo = calcularTurno(dateStr, inTime, outTime, obs, groupStr);
 
       if (editId) {
         const idx = timeRecords.findIndex(r => r.id === editId);
@@ -323,6 +349,7 @@
 
       document.getElementById('editRecordId').value = record.id;
       document.getElementById('shiftDate').value = record.dateStr;
+      document.getElementById('shiftGroup').value = record.group || '';
       document.getElementById('shiftIn').value = record.inTime;
       document.getElementById('shiftOut').value = record.outTime;
       document.getElementById('shiftObs').value = record.obs || '';
@@ -330,18 +357,19 @@
       document.getElementById('formTitle').textContent = 'Modificar Jornada';
       document.getElementById('editingBadge').classList.remove('hidden');
       document.getElementById('btnCancelEdit').classList.remove('hidden');
-      document.getElementById('btnSaveShift').textContent = 'Actualizar Jornada';
-      document.getElementById('btnSaveShift').className = 'w-full bg-amber-600 hover:bg-amber-700 text-white py-2 px-4 rounded font-bold transition shadow';
+      document.getElementById('btnSaveShift').textContent = 'Actualizar';
+      document.getElementById('btnSaveShift').className = 'w-full bg-amber-600 hover:bg-amber-700 text-white py-2 px-3 rounded font-bold transition shadow text-sm';
     }
 
     function cancelarEdicion() {
       document.getElementById('editRecordId').value = '';
+      document.getElementById('shiftGroup').value = '';
       document.getElementById('shiftObs').value = '';
       document.getElementById('formTitle').textContent = 'Registro de Jornada';
       document.getElementById('editingBadge').classList.add('hidden');
       document.getElementById('btnCancelEdit').classList.add('hidden');
-      document.getElementById('btnSaveShift').textContent = 'Guardar Jornada';
-      document.getElementById('btnSaveShift').className = 'w-full bg-[#1c4d31] hover:bg-[#133821] text-white py-2 px-4 rounded font-bold transition shadow';
+      document.getElementById('btnSaveShift').textContent = 'Guardar';
+      document.getElementById('btnSaveShift').className = 'w-full bg-[#1c4d31] hover:bg-[#133821] text-white py-2 px-3 rounded font-bold transition shadow text-sm';
     }
 
     function borrarJornada(id) {
@@ -353,7 +381,7 @@
     }
 
     function clearAllData() {
-      if (!confirm('¿Seguro deseas limpiar toda la tabla de jornadas en la nube?')) return;
+      if (!confirm('¿Seguro deseas limpiar toda la planilla en la nube?')) return;
       timeRecords = [];
       guardarEnNube();
       renderTable();
@@ -363,11 +391,11 @@
       if (timeRecords.length === 0) return alert('No hay turnos para recalcular.');
       timeRecords = timeRecords.map(r => ({
         id: r.id || ('id_' + Math.random().toString(36).substr(2, 9)),
-        ...calcularTurno(r.dateStr, r.inTime, r.outTime, r.obs || '')
+        ...calcularTurno(r.dateStr, r.inTime, r.outTime, r.obs || '', r.group || '')
       }));
       guardarEnNube();
       renderTable();
-      alert('Turnos recalculados con éxito según las reglas de 7h.');
+      alert('Planilla recalculada exitosamente con las reglas oficiales.');
     }
 
     function renderTable() {
@@ -375,23 +403,29 @@
       tbody.innerHTML = '';
 
       if (timeRecords.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" class="px-4 py-6 text-center text-gray-400 italic">No hay jornadas registradas. Agrega una jornada arriba.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="13" class="px-4 py-6 text-center text-gray-400 italic">No hay jornadas registradas. Agrega una jornada arriba.</td></tr>`;
         return;
       }
 
       timeRecords.sort((a,b) => a.dateStr.localeCompare(b.dateStr)).forEach(r => {
+        const esDom = r.diaNombre === 'DOMINGO' || r.diaNombre === 'SÁBADO' || r.festivoStr === 'SÍ';
+        const rowClass = esDom ? 'bg-amber-50/40 hover:bg-amber-100/40' : 'hover:bg-gray-50/50';
+
         tbody.innerHTML += `
-          <tr class="border-b border-gray-100 hover:bg-gray-50/50 text-xs md:text-sm transition-all">
-            <td class="px-3 py-3 font-mono text-gray-800 font-semibold">${r.dateStr}</td>
-            <td class="px-3 py-3"><span class="px-2 py-0.5 text-[10px] rounded font-bold ${r.dayType !== 'Hábiles (Lun-Vie)' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-700'}">${r.dayType}</span></td>
-            <td class="px-3 py-3 font-mono text-gray-700">${r.inTime} - ${r.outTime}</td>
-            <td class="px-3 py-3 text-center font-bold text-gray-800">${r.ordHours}</td>
-            <td class="px-3 py-3 text-center bg-blue-50/40 font-semibold text-blue-700">${r.hedo}</td>
-            <td class="px-3 py-3 text-center bg-blue-50/40 font-semibold text-blue-900">${r.heno}</td>
-            <td class="px-3 py-3 text-center bg-purple-50/40 font-semibold text-purple-700">${r.hedd}</td>
-            <td class="px-3 py-3 text-center bg-purple-50/40 font-semibold text-purple-900">${r.hend}</td>
-            <td class="px-3 py-3 italic text-gray-500">${r.obs || '-'}</td>
-            <td class="px-3 py-3 text-center space-x-2">
+          <tr class="border-b border-gray-150 ${rowClass} transition-all">
+            <td class="px-3 py-2.5 font-mono text-gray-800 font-semibold">${r.fechaDisplay || r.dateStr}</td>
+            <td class="px-2 py-2.5 font-bold ${esDom ? 'text-amber-900' : 'text-gray-700'}">${r.diaNombre}</td>
+            <td class="px-2 py-2.5 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${r.festivoStr === 'SÍ' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-600'}">${r.festivoStr}</span></td>
+            <td class="px-2 py-2.5 font-semibold text-gray-700">${r.group || '-'}</td>
+            <td class="px-3 py-2.5 font-mono text-gray-700">${r.inTime12 || r.inTime} - ${r.outTime12 || r.outTime}</td>
+            <td class="px-2 py-2.5 text-center font-bold text-gray-800">${r.ordHours}</td>
+            <td class="px-2 py-2.5 text-center bg-blue-50/30 text-blue-700 font-semibold">${r.hedo}</td>
+            <td class="px-2 py-2.5 text-center bg-blue-50/30 text-blue-900 font-semibold">${r.heno}</td>
+            <td class="px-2 py-2.5 text-center bg-purple-50/30 text-purple-700 font-semibold">${r.hedd}</td>
+            <td class="px-2 py-2.5 text-center bg-purple-50/30 text-purple-900 font-semibold">${r.hend}</td>
+            <td class="px-2 py-2.5 text-center font-bold text-[#1e3a2b] bg-gray-50">${r.totalHours}</td>
+            <td class="px-3 py-2.5 italic text-gray-500">${r.obs || '-'}</td>
+            <td class="px-2 py-2.5 text-center space-x-1.5">
               <button type="button" onclick="editarJornada('${r.id}')" class="text-amber-600 hover:text-amber-800 font-bold" title="Editar">✏️</button>
               <button type="button" onclick="borrarJornada('${r.id}')" class="text-red-600 hover:text-red-850 font-bold" title="Borrar">🗑️</button>
             </td>
@@ -400,7 +434,7 @@
       });
     }
 
-    // --- REPORTE EXCEL ---
+    // --- DESCARGA EXCEL CON EL FORMATO Y ORDEN EXACTO ---
     function ejecutarDescargaExcel() {
       try {
         if (typeof XLSX === 'undefined') {
@@ -408,64 +442,83 @@
         }
 
         if (timeRecords.length === 0) {
-          return alert('No hay jornadas registradas para exportar.');
+          return alert('No hay jornadas para exportar a Excel.');
         }
 
         const workbook = XLSX.utils.book_new();
 
-        let totalOrd = 0, totalHedo = 0, totalHeno = 0, totalHedd = 0, totalHend = 0;
+        let totalNorm = 0, totalHedo = 0, totalHeno = 0, totalHedd = 0, totalHend = 0, totalGran = 0;
 
-        const excelData = timeRecords.map(r => {
-          totalOrd += parseFloat(r.ordHours) || 0;
-          totalHedo += parseFloat(r.hedo) || 0;
-          totalHeno += parseFloat(r.heno) || 0;
-          totalHedd += parseFloat(r.hedd) || 0;
-          totalHend += parseFloat(r.hend) || 0;
+        // Orden de columnas exacto al formato solicitado
+        const rows = timeRecords.map(r => {
+          totalNorm += r.ordHours || 0;
+          totalHedo += r.hedo || 0;
+          totalHeno += r.heno || 0;
+          totalHedd += r.hedd || 0;
+          totalHend += r.hend || 0;
+          totalGran += r.totalHours || 0;
 
           return {
-            'Fecha': r.dateStr,
-            'Tipo Día': r.dayType,
-            'Entrada': r.inTime,
-            'Salida': r.outTime,
-            'Horas Ord (7h)': parseFloat(r.ordHours) || 0,
-            'HEDO': parseFloat(r.hedo) || 0,
-            'HENO': parseFloat(r.heno) || 0,
-            'HEDD / HEDF': parseFloat(r.hedd) || 0,
-            'HEND / HENF': parseFloat(r.hend) || 0,
+            'Fecha': r.fechaDisplay || r.dateStr,
+            'Día': r.diaNombre,
+            'Festivo': r.festivoStr,
+            'Grupo': r.group || '',
+            'Entrada': r.inTime12 || r.inTime,
+            'Salida': r.outTime12 || r.outTime,
+            'Horas normales': r.ordHours,
+            'Extra diurna ordinaria': r.hedo,
+            'Extra nocturna ordinaria': r.heno,
+            'Extra diurna': r.hedd,
+            'Extra nocturna dominical': r.hend,
+            'Total horas': r.totalHours,
             'Observaciones': r.obs || ''
           };
         });
 
-        excelData.push({
+        // Fila final de sumatorias acumuladas
+        rows.push({
           'Fecha': 'TOTALES',
-          'Tipo Día': '',
+          'Día': '',
+          'Festivo': '',
+          'Grupo': '',
           'Entrada': '',
           'Salida': '',
-          'Horas Ord (7h)': parseFloat(totalOrd.toFixed(2)),
-          'HEDO': parseFloat(totalHedo.toFixed(2)),
-          'HENO': parseFloat(totalHeno.toFixed(2)),
-          'HEDD / HEDF': parseFloat(totalHedd.toFixed(2)),
-          'HEND / HENF': parseFloat(totalHend.toFixed(2)),
-          'Observaciones': 'Suma Total Acumulada'
+          'Horas normales': parseFloat(totalNorm.toFixed(2)),
+          'Extra diurna ordinaria': parseFloat(totalHedo.toFixed(2)),
+          'Extra nocturna ordinaria': parseFloat(totalHeno.toFixed(2)),
+          'Extra diurna': parseFloat(totalHedd.toFixed(2)),
+          'Extra nocturna dominical': parseFloat(totalHend.toFixed(2)),
+          'Total horas': parseFloat(totalGran.toFixed(2)),
+          'Observaciones': 'Suma Total Quincena'
         });
 
-        const worksheet = XLSX.utils.json_to_sheet(excelData);
+        const worksheet = XLSX.utils.json_to_sheet(rows);
 
-        // Ajuste de columnas
+        // Anchos de columna óptimos
         worksheet['!cols'] = [
-          { wch: 14 }, { wch: 18 }, { wch: 10 }, { wch: 10 },
-          { wch: 16 }, { wch: 10 }, { wch: 10 }, { wch: 14 },
-          { wch: 14 }, { wch: 30 }
+          { wch: 13 }, // Fecha
+          { wch: 14 }, // Día
+          { wch: 9 },  // Festivo
+          { wch: 12 }, // Grupo
+          { wch: 13 }, // Entrada
+          { wch: 13 }, // Salida
+          { wch: 15 }, // Horas normales
+          { wch: 21 }, // Extra diurna ordinaria
+          { wch: 23 }, // Extra nocturna ordinaria
+          { wch: 14 }, // Extra diurna
+          { wch: 24 }, // Extra nocturna dominical
+          { wch: 13 }, // Total horas
+          { wch: 28 }  // Observaciones
         ];
 
         XLSX.utils.book_append_sheet(workbook, worksheet, "CONTROL HORAS");
 
         const today = new Date().toISOString().split('T')[0];
-        XLSX.writeFile(workbook, `Reporte_Jornadas_TierraFertil_${today}.xlsx`);
+        XLSX.writeFile(workbook, `Reporte_Nomina_Quincenal_${today}.xlsx`);
 
       } catch (err) {
         console.error('Error al generar Excel:', err);
-        alert('Ocurrió un error al preparar el Excel: ' + err.message);
+        alert('Ocurrió un error al generar el archivo: ' + err.message);
       }
     }
   </script>
