@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sistema de Horarios y Nómina - Tierra Fértil</title>
+  <title>Control de Horas y Nómina - Tierra Fértil</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- SheetJS CDN -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
-  <!-- Firebase App & Firestore (SDK Scripts compatibles) -->
+  <!-- Firebase App & Firestore -->
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 </head>
@@ -25,11 +25,11 @@
             <span class="w-1.5 h-1.5 mr-1.5 bg-yellow-400 rounded-full animate-ping"></span> Conectando Nube...
           </span>
         </div>
-        <p class="text-gray-300 text-sm mt-1">Sincronización multiusuario en tiempo real · Base 7h Colombia</p>
+        <p class="text-gray-300 text-sm mt-1">Registro global de turnos y liquidación horaria · Base 7h Colombia</p>
       </div>
       <div class="flex flex-wrap gap-2 mt-4 md:mt-0">
         <button type="button" onclick="forzarRecalculo()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 px-4 rounded shadow-md transition-all text-xs flex items-center">
-          🔄 Recalcular Registros
+          🔄 Recalcular Turnos
         </button>
         <button type="button" onclick="ejecutarDescargaExcel()" class="bg-[#3b7c53] hover:bg-[#2f6342] text-white font-bold py-2.5 px-4 rounded shadow-md transition-all text-xs flex items-center border border-[#489564]">
           <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
@@ -38,89 +38,48 @@
       </div>
     </header>
 
-    <!-- Bloque 1: Gestión de Empleados -->
-    <section class="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-      <h2 class="text-lg font-semibold text-[#1e3a2b] mb-4">1. Lista de Empleados</h2>
-      <div class="flex flex-col sm:flex-row gap-4 mb-4">
-        <input type="hidden" id="editEmpOriginalId" value="">
-        <input type="text" id="empName" placeholder="Nombre completo" class="border p-2 rounded w-full sm:w-1/2 focus:outline-none focus:ring-2 focus:ring-[#3b7c53] bg-gray-50/50">
-        <input type="text" id="empId" placeholder="Cédula / ID" class="border p-2 rounded w-full sm:w-1/3 focus:outline-none focus:ring-2 focus:ring-[#3b7c53] bg-gray-50/50">
-        <button type="button" id="btnSaveEmp" onclick="saveEmployee()" class="bg-[#1e3a2b] hover:bg-[#2c563e] text-white px-5 py-2 rounded font-semibold transition-all shadow-sm">Agregar</button>
-        <button type="button" id="btnCancelEmpEdit" onclick="cancelEmpEdit()" class="hidden bg-gray-500 text-white px-3 py-2 rounded hover:bg-gray-600 font-semibold transition">Cancelar</button>
-      </div>
-      <div class="overflow-x-auto mt-2">
-        <div id="employeeList" class="flex flex-wrap gap-2"></div>
-      </div>
-    </section>
-
-    <!-- Bloque 2: Carga Global de Jornada -->
+    <!-- Registro Global de Jornada -->
     <section class="bg-white p-6 rounded-lg shadow-sm border border-gray-100 border-l-4 border-[#3b7c53]">
-      <h2 class="text-lg font-semibold text-[#1e3a2b] mb-2">2. Carga Global de Jornada</h2>
-      <p class="text-sm text-gray-500 mb-4">Aplica la misma fecha, horario y observaciones a <b>TODOS</b> los empleados en la nube.</p>
+      <div class="flex justify-between items-center mb-2">
+        <h2 id="formTitle" class="text-lg font-semibold text-[#1e3a2b]">Registro de Jornada</h2>
+        <span id="editingBadge" class="hidden text-xs font-bold bg-amber-100 text-amber-800 px-2.5 py-1 rounded border border-amber-200">Modificando Jornada</span>
+      </div>
+      <p class="text-sm text-gray-500 mb-4">Ingresa la fecha, horas de entrada y salida para calcular automáticamente ordinarias y extras.</p>
       
+      <input type="hidden" id="editRecordId" value="">
+
       <div class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
         <div>
           <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Fecha Entrada</label>
-          <input type="date" id="globalDate" class="w-full border p-2 rounded focus:ring-2 focus:ring-[#3b7c53]">
+          <input type="date" id="shiftDate" class="w-full border p-2 rounded focus:ring-2 focus:ring-[#3b7c53]">
         </div>
         <div>
           <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Hora Entrada</label>
-          <input type="time" id="globalIn" value="07:00" class="w-full border p-2 rounded focus:ring-2 focus:ring-[#3b7c53]">
+          <input type="time" id="shiftIn" value="07:00" class="w-full border p-2 rounded focus:ring-2 focus:ring-[#3b7c53]">
         </div>
         <div>
           <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Hora Salida</label>
-          <input type="time" id="globalOut" value="14:00" class="w-full border p-2 rounded focus:ring-2 focus:ring-[#3b7c53]">
+          <input type="time" id="shiftOut" value="14:00" class="w-full border p-2 rounded focus:ring-2 focus:ring-[#3b7c53]">
         </div>
         <div>
-          <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Observación Global</label>
-          <input type="text" id="globalObs" placeholder="Ej: Jornada Completa" class="w-full border p-2 rounded focus:ring-2 focus:ring-[#3b7c53]">
-        </div>
-        <div>
-          <button type="button" onclick="applyGlobalRecord()" class="w-full bg-[#1c4d31] text-white py-2 px-4 rounded font-bold hover:bg-[#133821] transition shadow">Aplicar a Todo el Personal</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- Bloque 3: Novedad Individual -->
-    <section id="secNovedad" class="bg-white p-6 rounded-lg shadow-sm border border-gray-100 border-l-4 border-amber-600">
-      <div class="flex justify-between items-center mb-2">
-        <h2 id="novTitle" class="text-lg font-semibold text-amber-800">3. Registrar / Modificar Novedad Individual</h2>
-        <span id="editingBadge" class="hidden text-xs font-bold bg-amber-100 text-amber-800 px-2 py-1 rounded border border-amber-200">Editando Novedad</span>
-      </div>
-      <p class="text-sm text-gray-500 mb-4">Selecciona el empleado y la fecha para cambiar o registrar turnos específicos.</p>
-      
-      <div class="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
-        <div>
-          <label class="block text-xs font-bold text-gray-700 uppercase mb-1 font-medium">Empleado</label>
-          <select id="novEmp" class="w-full border p-2 rounded focus:ring-2 focus:ring-amber-500"></select>
-        </div>
-        <div>
-          <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Fecha Entrada</label>
-          <input type="date" id="novDate" class="w-full border p-2 rounded focus:ring-2 focus:ring-amber-500">
-        </div>
-        <div>
-          <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Hora Entrada</label>
-          <input type="time" id="novIn" class="w-full border p-2 rounded focus:ring-2 focus:ring-amber-500">
-        </div>
-        <div>
-          <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Hora Salida</label>
-          <input type="time" id="novOut" class="w-full border p-2 rounded focus:ring-2 focus:ring-amber-500">
-        </div>
-        <div>
-          <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Observaciones / Novedad</label>
-          <input type="text" id="novObs" placeholder="Ej: Turno domingo noche a lunes" class="w-full border p-2 rounded focus:ring-2 focus:ring-amber-500">
+          <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Observación</label>
+          <input type="text" id="shiftObs" placeholder="Ej: Turno general, Novedad operativa" class="w-full border p-2 rounded focus:ring-2 focus:ring-[#3b7c53]">
         </div>
         <div class="flex gap-2">
-          <button type="button" id="btnSaveNov" onclick="applyIndividualNovedad()" class="w-full bg-amber-600 text-white py-2 px-4 rounded font-bold hover:bg-amber-700 transition">Guardar Novedad</button>
-          <button type="button" id="btnCancelNovEdit" onclick="cancelNovEdit()" class="hidden bg-gray-400 text-white px-2 py-2 rounded hover:bg-gray-500 transition">Cancelar</button>
+          <button type="button" id="btnSaveShift" onclick="guardarJornada()" class="w-full bg-[#1c4d31] text-white py-2 px-4 rounded font-bold hover:bg-[#133821] transition shadow">
+            Guardar Jornada
+          </button>
+          <button type="button" id="btnCancelEdit" onclick="cancelarEdicion()" class="hidden bg-gray-400 text-white px-3 py-2 rounded hover:bg-gray-500 transition font-bold">
+            Cancelar
+          </button>
         </div>
       </div>
     </section>
 
-    <!-- Bloque 4: Visualización y Desglose de Tiempos -->
+    <!-- Visualización y Desglose de Turnos -->
     <section class="bg-white p-6 rounded-lg shadow-sm border border-gray-150">
       <div class="flex justify-between items-center mb-4 border-b pb-4">
-        <h2 class="text-lg font-semibold text-[#1e3a2b]">4. Consolidado Diario y Novedades</h2>
+        <h2 class="text-lg font-semibold text-[#1e3a2b]">Consolidado de Jornadas</h2>
         <button type="button" onclick="clearAllData()" class="text-xs text-red-600 hover:text-red-850 font-semibold flex items-center transition underline">
           Borrar Toda la Tabla en Nube
         </button>
@@ -129,7 +88,6 @@
         <table class="w-full text-sm text-left text-gray-600 border border-gray-200 rounded-lg">
           <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
             <tr>
-              <th class="px-3 py-3">Empleado</th>
               <th class="px-3 py-3">Fecha</th>
               <th class="px-3 py-3">Tipo Día</th>
               <th class="px-3 py-3">Entrada - Salida</th>
@@ -164,7 +122,7 @@
     const db = firebase.firestore();
     const docRef = db.collection("nomina").doc("tierra_fertil_data");
 
-    // Festivos Oficiales Colombia
+    // Festivos Oficiales Colombia (2025 - 2027)
     const COLOMBIA_HOLIDAYS = new Set([
       '2025-01-01', '2025-01-06', '2025-03-24', '2025-04-17', '2025-04-18', '2025-05-01',
       '2025-06-02', '2025-06-23', '2025-06-30', '2025-07-20', '2025-08-07', '2025-08-18',
@@ -177,43 +135,38 @@
       '2027-08-16', '2027-10-18', '2027-11-01', '2027-11-15', '2027-12-08', '2027-12-25'
     ]);
 
-    let employees = JSON.parse(localStorage.getItem('nomina_employees')) || [];
-    let timeRecords = JSON.parse(localStorage.getItem('nomina_timeRecords')) || [];
+    let timeRecords = JSON.parse(localStorage.getItem('nomina_timeRecords_global')) || [];
 
     document.addEventListener("DOMContentLoaded", () => {
       const hoy = new Date().toISOString().split('T')[0];
-      const gDate = document.getElementById('globalDate');
-      const nDate = document.getElementById('novDate');
-      if (gDate) gDate.value = hoy;
-      if (nDate) nDate.value = hoy;
+      const sDate = document.getElementById('shiftDate');
+      if (sDate) sDate.value = hoy;
 
-      renderEmployees();
       renderTable();
       conectarNubeFirebase();
     });
 
-    // Sincronización en tiempo real con Firebase Firestore
     function conectarNubeFirebase() {
       const syncBadge = document.getElementById('syncStatus');
 
       docRef.onSnapshot((doc) => {
         if (doc.exists) {
           const data = doc.data();
-          employees = data.employees || [];
-          timeRecords = data.timeRecords || [];
+          // Soporte tanto para formato global nuevo como migración de registros previos
+          if (data.timeRecordsGlobal) {
+            timeRecords = data.timeRecordsGlobal;
+          } else if (data.timeRecords && data.timeRecords.length > 0) {
+            // Si venía del formato anterior con empleados, unifica por fecha/horario
+            timeRecords = normalizarRegistrosAnteriores(data.timeRecords);
+          } else {
+            timeRecords = [];
+          }
 
-          // Guarda copia de respaldo local
-          localStorage.setItem('nomina_employees', JSON.stringify(employees));
-          localStorage.setItem('nomina_timeRecords', JSON.stringify(timeRecords));
-
-          renderEmployees();
+          localStorage.setItem('nomina_timeRecords_global', JSON.stringify(timeRecords));
           renderTable();
           syncBadge.innerHTML = '<span class="w-1.5 h-1.5 mr-1.5 bg-green-400 rounded-full"></span> Conectado a la Nube';
         } else {
-          // Si el documento en la nube aún no existe, migra los datos locales
-          if (employees.length > 0 || timeRecords.length > 0) {
-            guardarEnNube();
-          }
+          if (timeRecords.length > 0) guardarEnNube();
           syncBadge.innerHTML = '<span class="w-1.5 h-1.5 mr-1.5 bg-green-400 rounded-full"></span> Conectado a la Nube';
         }
       }, (error) => {
@@ -222,13 +175,29 @@
       });
     }
 
+    function normalizarRegistrosAnteriores(registrosViejos) {
+      const unicos = new Map();
+      registrosViejos.forEach(r => {
+        const clave = `${r.dateStr}_${r.inTime}_${r.outTime}`;
+        if (!unicos.has(clave)) {
+          unicos.set(clave, {
+            id: 'id_' + Math.random().toString(36).substr(2, 9),
+            dateStr: r.dateStr,
+            inTime: r.inTime,
+            outTime: r.outTime,
+            obs: r.obs || '',
+            ...calcularTurno(r.dateStr, r.inTime, r.outTime, r.obs || '')
+          });
+        }
+      });
+      return Array.from(unicos.values());
+    }
+
     function guardarEnNube() {
-      localStorage.setItem('nomina_employees', JSON.stringify(employees));
-      localStorage.setItem('nomina_timeRecords', JSON.stringify(timeRecords));
+      localStorage.setItem('nomina_timeRecords_global', JSON.stringify(timeRecords));
 
       docRef.set({
-        employees: employees,
-        timeRecords: timeRecords,
+        timeRecordsGlobal: timeRecords,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       }, { merge: true }).catch(err => {
         console.error("Error al guardar en la nube:", err);
@@ -253,8 +222,8 @@
       return 'Hábiles (Lun-Vie)';
     }
 
-    // Regla de cálculo minuto a minuto (Base 7.0h)
-    function processShiftRules(emp, dateStr, inTimeStr, outTimeStr, obsStr = '') {
+    // --- MOTOR DE CÁLCULO BASE 7H MINUTO A MINUTO ---
+    function calcularTurno(dateStr, inTimeStr, outTimeStr, obsStr = '') {
       const [year, month, day] = dateStr.split('-').map(Number);
       const [inH, inM] = inTimeStr.split(':').map(Number);
       const [outH, outM] = outTimeStr.split(':').map(Number);
@@ -267,7 +236,7 @@
       }
 
       let totalMinutes = Math.round((end - start) / 60000);
-      let ordinariasReq = 7 * 60; // 7 horas fijas
+      let ordinariasReq = 7 * 60; // 7.0 horas ordinarias fijas
 
       let ordMins = Math.min(totalMinutes, ordinariasReq);
       let extraMins = Math.max(0, totalMinutes - ordinariasReq);
@@ -280,16 +249,18 @@
 
         while (curr < end) {
           let hour = curr.getHours();
-          let esDiurno = hour >= 6 && hour < 21;
+          let esDiurno = hour >= 6 && hour < 21; // 6:00 a 21:00
           let esDomFest = isDominicalOFestivo(curr);
 
           if (esDomFest) {
+            // Regla nocturna dominical a partir de las 18:00 o fuera del rango diurno
             if (hour >= 18 || !esDiurno) {
               HEND++;
             } else {
               HEDD++;
             }
           } else {
+            // Día hábil ordinario
             if (esDiurno) {
               HEDO++;
             } else {
@@ -301,9 +272,6 @@
       }
 
       return {
-        key: `${emp.id}_${dateStr}`,
-        empId: emp.id,
-        empName: emp.name,
         dateStr: dateStr,
         dayType: getDayTypeStr(new Date(year, month - 1, day, 12, 0, 0)),
         inTime: inTimeStr,
@@ -317,207 +285,89 @@
       };
     }
 
-    function forzarRecalculo() {
-      if (!timeRecords || timeRecords.length === 0) return alert('No hay registros cargados para recalcular.');
-      timeRecords = timeRecords.map(r => {
-        const emp = employees.find(e => String(e.id) === String(r.empId)) || { id: r.empId, name: r.empName };
-        return processShiftRules(emp, r.dateStr, r.inTime, r.outTime, r.obs || '');
-      });
-      guardarEnNube();
-      renderTable();
-      alert('Registros recalculados y sincronizados en la nube con éxito.');
-    }
+    // --- ACCIONES DE JORNADA ---
+    function guardarJornada() {
+      const dateStr = document.getElementById('shiftDate').value;
+      const inTime = document.getElementById('shiftIn').value;
+      const outTime = document.getElementById('shiftOut').value;
+      const obs = document.getElementById('shiftObs').value.trim();
+      const editId = document.getElementById('editRecordId').value;
 
-    // --- ACCIONES EMPLEADOS ---
-    function saveEmployee() {
-      const nameInput = document.getElementById('empName');
-      const idInput = document.getElementById('empId');
-      const name = nameInput.value.trim();
-      const id = idInput.value.trim();
-      const originalId = document.getElementById('editEmpOriginalId').value;
+      if (!dateStr || !inTime || !outTime) {
+        return alert('Por favor ingresa fecha, hora de entrada y hora de salida.');
+      }
 
-      if (!name || !id) return alert('Por favor escribe el Nombre y la Cédula/ID.');
+      const calculo = calcularTurno(dateStr, inTime, outTime, obs);
 
-      if (originalId) {
-        if (id !== originalId && employees.some(e => e.id === id)) {
-          return alert('Esa cédula o ID ya pertenece a otro empleado.');
+      if (editId) {
+        const idx = timeRecords.findIndex(r => r.id === editId);
+        if (idx >= 0) {
+          timeRecords[idx] = { id: editId, ...calculo };
         }
-
-        const empIdx = employees.findIndex(e => e.id === originalId);
-        if (empIdx >= 0) {
-          employees[empIdx] = { id, name };
-          timeRecords.forEach(r => {
-            if (r.empId === originalId) {
-              r.empId = id;
-              r.empName = name;
-              r.key = `${id}_${r.dateStr}`;
-            }
-          });
-        }
-        cancelEmpEdit();
+        cancelarEdicion();
       } else {
-        if (employees.some(e => e.id === id)) return alert('Esta cédula o ID ya está registrada.');
-        employees.push({ id, name });
-        nameInput.value = '';
-        idInput.value = '';
+        timeRecords.push({
+          id: 'id_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+          ...calculo
+        });
+        document.getElementById('shiftObs').value = '';
       }
 
       guardarEnNube();
-      renderEmployees();
       renderTable();
     }
 
-    function editEmployee(id) {
-      const emp = employees.find(e => e.id === id);
-      if (!emp) return;
-
-      document.getElementById('editEmpOriginalId').value = emp.id;
-      document.getElementById('empName').value = emp.name;
-      document.getElementById('empId').value = emp.id;
-
-      const btn = document.getElementById('btnSaveEmp');
-      btn.textContent = 'Guardar Cambios';
-      btn.className = 'bg-amber-600 hover:bg-amber-700 text-white px-5 py-2 rounded font-semibold transition-all shadow-sm';
-      document.getElementById('btnCancelEmpEdit').classList.remove('hidden');
-    }
-
-    function cancelEmpEdit() {
-      document.getElementById('editEmpOriginalId').value = '';
-      document.getElementById('empName').value = '';
-      document.getElementById('empId').value = '';
-
-      const btn = document.getElementById('btnSaveEmp');
-      btn.textContent = 'Agregar';
-      btn.className = 'bg-[#1e3a2b] hover:bg-[#2c563e] text-white px-5 py-2 rounded font-semibold transition-all shadow-sm';
-      document.getElementById('btnCancelEmpEdit').classList.add('hidden');
-    }
-
-    function deleteEmployee(id) {
-      if (!confirm('¿Deseas eliminar este empleado de la nube? Su historial también será removido.')) return;
-
-      employees = employees.filter(e => e.id !== id);
-      timeRecords = timeRecords.filter(r => r.empId !== id);
-
-      if (document.getElementById('editEmpOriginalId').value === id) cancelEmpEdit();
-
-      guardarEnNube();
-      renderEmployees();
-      renderTable();
-    }
-
-    function renderEmployees() {
-      const list = document.getElementById('employeeList');
-      const select = document.getElementById('novEmp');
-      list.innerHTML = '';
-      select.innerHTML = '';
-
-      if (employees.length === 0) {
-        list.innerHTML = '<span class="text-xs text-gray-400 italic">No hay empleados agregados aún.</span>';
-        select.innerHTML = '<option value="">Sin empleados</option>';
-        return;
-      }
-
-      employees.forEach(e => {
-        list.innerHTML += `
-          <div class="inline-flex items-center bg-[#f0fdf4] border border-[#d1fae5] rounded px-3 py-1.5 text-xs font-semibold text-[#14532d] gap-2 shadow-sm">
-            <span>${e.name} (${e.id})</span>
-            <button type="button" onclick="editEmployee('${e.id}')" class="text-amber-700 hover:text-amber-950 font-bold ml-1 transition" title="Editar">✏️</button>
-            <button type="button" onclick="deleteEmployee('${e.id}')" class="text-red-600 hover:text-red-850 font-bold transition" title="Eliminar">❌</button>
-          </div>
-        `;
-        select.innerHTML += `<option value="${e.id}">${e.name} - ${e.id}</option>`;
-      });
-    }
-
-    // --- ACCIONES HORARIOS ---
-    function applyGlobalRecord() {
-      if (employees.length === 0) return alert('Primero debes agregar al menos un empleado.');
-
-      const dateStr = document.getElementById('globalDate').value;
-      const inTime = document.getElementById('globalIn').value;
-      const outTime = document.getElementById('globalOut').value;
-      const obsStr = document.getElementById('globalObs').value.trim();
-
-      if (!dateStr || !inTime || !outTime) return alert('Seleccione fecha, entrada y salida.');
-
-      employees.forEach(e => {
-        const key = `${e.id}_${dateStr}`;
-        const existingIdx = timeRecords.findIndex(r => r.key === key);
-        const calculated = processShiftRules(e, dateStr, inTime, outTime, obsStr);
-
-        if (existingIdx >= 0) {
-          timeRecords[existingIdx] = calculated;
-        } else {
-          timeRecords.push(calculated);
-        }
-      });
-
-      guardarEnNube();
-      renderTable();
-    }
-
-    function applyIndividualNovedad() {
-      const empId = document.getElementById('novEmp').value;
-      const dateStr = document.getElementById('novDate').value;
-      const inTime = document.getElementById('novIn').value;
-      const outTime = document.getElementById('novOut').value;
-      const obsStr = document.getElementById('novObs').value.trim();
-
-      if (!empId || !dateStr || !inTime || !outTime) return alert('Por favor complete todos los campos de la novedad.');
-
-      const emp = employees.find(e => e.id === empId);
-      if (!emp) return alert('Seleccione un empleado válido.');
-
-      const key = `${emp.id}_${dateStr}`;
-      const existingIdx = timeRecords.findIndex(r => r.key === key);
-      const calculated = processShiftRules(emp, dateStr, inTime, outTime, obsStr);
-
-      if (existingIdx >= 0) {
-        timeRecords[existingIdx] = calculated;
-      } else {
-        timeRecords.push(calculated);
-      }
-
-      cancelNovEdit();
-      guardarEnNube();
-      renderTable();
-    }
-
-    function editRecord(key) {
-      const record = timeRecords.find(r => r.key === key);
+    function editarJornada(id) {
+      const record = timeRecords.find(r => r.id === id);
       if (!record) return;
 
-      document.getElementById('novEmp').value = record.empId;
-      document.getElementById('novDate').value = record.dateStr;
-      document.getElementById('novIn').value = record.inTime;
-      document.getElementById('novOut').value = record.outTime;
-      document.getElementById('novObs').value = record.obs || '';
+      document.getElementById('editRecordId').value = record.id;
+      document.getElementById('shiftDate').value = record.dateStr;
+      document.getElementById('shiftIn').value = record.inTime;
+      document.getElementById('shiftOut').value = record.outTime;
+      document.getElementById('shiftObs').value = record.obs || '';
 
+      document.getElementById('formTitle').textContent = 'Modificar Jornada';
       document.getElementById('editingBadge').classList.remove('hidden');
-      document.getElementById('btnCancelNovEdit').classList.remove('hidden');
-      document.getElementById('secNovedad').scrollIntoView({ behavior: 'smooth' });
+      document.getElementById('btnCancelEdit').classList.remove('hidden');
+      document.getElementById('btnSaveShift').textContent = 'Actualizar Jornada';
+      document.getElementById('btnSaveShift').className = 'w-full bg-amber-600 hover:bg-amber-700 text-white py-2 px-4 rounded font-bold transition shadow';
     }
 
-    function cancelNovEdit() {
+    function cancelarEdicion() {
+      document.getElementById('editRecordId').value = '';
+      document.getElementById('shiftObs').value = '';
+      document.getElementById('formTitle').textContent = 'Registro de Jornada';
       document.getElementById('editingBadge').classList.add('hidden');
-      document.getElementById('btnCancelNovEdit').classList.add('hidden');
-      document.getElementById('novIn').value = '';
-      document.getElementById('novOut').value = '';
-      document.getElementById('novObs').value = '';
+      document.getElementById('btnCancelEdit').classList.add('hidden');
+      document.getElementById('btnSaveShift').textContent = 'Guardar Jornada';
+      document.getElementById('btnSaveShift').className = 'w-full bg-[#1c4d31] hover:bg-[#133821] text-white py-2 px-4 rounded font-bold transition shadow';
     }
 
-    function deleteRecord(key) {
-      if (!confirm('¿Deseas eliminar este registro de la base de datos?')) return;
-      timeRecords = timeRecords.filter(r => r.key !== key);
+    function borrarJornada(id) {
+      if (!confirm('¿Deseas eliminar este registro de jornada?')) return;
+      timeRecords = timeRecords.filter(r => r.id !== id);
+      if (document.getElementById('editRecordId').value === id) cancelarEdicion();
       guardarEnNube();
       renderTable();
     }
 
     function clearAllData() {
-      if (!confirm('¿Seguro deseas limpiar toda la tabla de horarios en la nube?')) return;
+      if (!confirm('¿Seguro deseas limpiar toda la tabla de jornadas en la nube?')) return;
       timeRecords = [];
       guardarEnNube();
       renderTable();
+    }
+
+    function forzarRecalculo() {
+      if (timeRecords.length === 0) return alert('No hay turnos para recalcular.');
+      timeRecords = timeRecords.map(r => ({
+        id: r.id || ('id_' + Math.random().toString(36).substr(2, 9)),
+        ...calcularTurno(r.dateStr, r.inTime, r.outTime, r.obs || '')
+      }));
+      guardarEnNube();
+      renderTable();
+      alert('Turnos recalculados con éxito según las reglas de 7h.');
     }
 
     function renderTable() {
@@ -525,15 +375,14 @@
       tbody.innerHTML = '';
 
       if (timeRecords.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="11" class="px-4 py-4 text-center text-gray-400 italic">No hay horarios cargados en la base de datos.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" class="px-4 py-6 text-center text-gray-400 italic">No hay jornadas registradas. Agrega una jornada arriba.</td></tr>`;
         return;
       }
 
       timeRecords.sort((a,b) => a.dateStr.localeCompare(b.dateStr)).forEach(r => {
         tbody.innerHTML += `
           <tr class="border-b border-gray-100 hover:bg-gray-50/50 text-xs md:text-sm transition-all">
-            <td class="px-3 py-3 font-semibold text-[#1e3a2b]">${r.empName} (${r.empId})</td>
-            <td class="px-3 py-3 font-mono text-gray-600">${r.dateStr}</td>
+            <td class="px-3 py-3 font-mono text-gray-800 font-semibold">${r.dateStr}</td>
             <td class="px-3 py-3"><span class="px-2 py-0.5 text-[10px] rounded font-bold ${r.dayType !== 'Hábiles (Lun-Vie)' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-700'}">${r.dayType}</span></td>
             <td class="px-3 py-3 font-mono text-gray-700">${r.inTime} - ${r.outTime}</td>
             <td class="px-3 py-3 text-center font-bold text-gray-800">${r.ordHours}</td>
@@ -543,152 +392,76 @@
             <td class="px-3 py-3 text-center bg-purple-50/40 font-semibold text-purple-900">${r.hend}</td>
             <td class="px-3 py-3 italic text-gray-500">${r.obs || '-'}</td>
             <td class="px-3 py-3 text-center space-x-2">
-              <button type="button" onclick="editRecord('${r.key}')" class="text-amber-600 hover:text-amber-800 font-bold" title="Editar">✏️</button>
-              <button type="button" onclick="deleteRecord('${r.key}')" class="text-red-600 hover:text-red-850 font-bold" title="Borrar">🗑️</button>
+              <button type="button" onclick="editarJornada('${r.id}')" class="text-amber-600 hover:text-amber-800 font-bold" title="Editar">✏️</button>
+              <button type="button" onclick="borrarJornada('${r.id}')" class="text-red-600 hover:text-red-850 font-bold" title="Borrar">🗑️</button>
             </td>
           </tr>
         `;
       });
     }
 
-    // --- MOTOR DE EXPORTACIÓN A EXCEL ---
+    // --- REPORTE EXCEL ---
     function ejecutarDescargaExcel() {
       try {
         if (typeof XLSX === 'undefined') {
-          alert('La librería de Excel no se ha cargado. Comprueba tu conexión a internet.');
-          return;
+          return alert('La librería de Excel no se ha cargado. Verifica la conexión a internet.');
         }
 
-        if (employees.length === 0 && timeRecords.length === 0) {
-          alert('No hay datos en la nube para exportar.');
-          return;
+        if (timeRecords.length === 0) {
+          return alert('No hay jornadas registradas para exportar.');
         }
 
         const workbook = XLSX.utils.book_new();
 
-        // 1. Resumen General
-        const summaryData = [];
-        const groupedByEmployee = {};
+        let totalOrd = 0, totalHedo = 0, totalHeno = 0, totalHedd = 0, totalHend = 0;
 
-        employees.forEach(emp => {
-          groupedByEmployee[emp.id] = {
-            id: emp.id,
-            name: emp.name,
-            ord: 0, hedo: 0, heno: 0, hedd: 0, hend: 0,
-            daysWorked: 0
+        const excelData = timeRecords.map(r => {
+          totalOrd += parseFloat(r.ordHours) || 0;
+          totalHedo += parseFloat(r.hedo) || 0;
+          totalHeno += parseFloat(r.heno) || 0;
+          totalHedd += parseFloat(r.hedd) || 0;
+          totalHend += parseFloat(r.hend) || 0;
+
+          return {
+            'Fecha': r.dateStr,
+            'Tipo Día': r.dayType,
+            'Entrada': r.inTime,
+            'Salida': r.outTime,
+            'Horas Ord (7h)': parseFloat(r.ordHours) || 0,
+            'HEDO': parseFloat(r.hedo) || 0,
+            'HENO': parseFloat(r.heno) || 0,
+            'HEDD / HEDF': parseFloat(r.hedd) || 0,
+            'HEND / HENF': parseFloat(r.hend) || 0,
+            'Observaciones': r.obs || ''
           };
         });
 
-        timeRecords.forEach(r => {
-          if (!groupedByEmployee[r.empId]) {
-            groupedByEmployee[r.empId] = {
-              id: r.empId,
-              name: r.empName,
-              ord: 0, hedo: 0, heno: 0, hedd: 0, hend: 0,
-              daysWorked: 0
-            };
-          }
-          const emp = groupedByEmployee[r.empId];
-          emp.ord += parseFloat(r.ordHours) || 0;
-          emp.hedo += parseFloat(r.hedo) || 0;
-          emp.heno += parseFloat(r.heno) || 0;
-          emp.hedd += parseFloat(r.hedd) || 0;
-          emp.hend += parseFloat(r.hend) || 0;
-          emp.daysWorked += 1;
+        excelData.push({
+          'Fecha': 'TOTALES',
+          'Tipo Día': '',
+          'Entrada': '',
+          'Salida': '',
+          'Horas Ord (7h)': parseFloat(totalOrd.toFixed(2)),
+          'HEDO': parseFloat(totalHedo.toFixed(2)),
+          'HENO': parseFloat(totalHeno.toFixed(2)),
+          'HEDD / HEDF': parseFloat(totalHedd.toFixed(2)),
+          'HEND / HENF': parseFloat(totalHend.toFixed(2)),
+          'Observaciones': 'Suma Total Acumulada'
         });
 
-        const listToExport = Object.values(groupedByEmployee);
-        listToExport.forEach(emp => {
-          summaryData.push({
-            'Cédula / ID': emp.id,
-            'Nombre Empleado': emp.name,
-            'Días Registrados': emp.daysWorked,
-            'Total Ordinarias (7h)': parseFloat(emp.ord.toFixed(2)),
-            'Total HEDO': parseFloat(emp.hedo.toFixed(2)),
-            'Total HENO': parseFloat(emp.heno.toFixed(2)),
-            'Total HEDD / HEDF': parseFloat(emp.hedd.toFixed(2)),
-            'Total HEND / HENF': parseFloat(emp.hend.toFixed(2)),
-            'Gran Total Horas': parseFloat((emp.ord + emp.hedo + emp.heno + emp.hedd + emp.hend).toFixed(2))
-          });
-        });
+        const worksheet = XLSX.utils.json_to_sheet(excelData);
 
-        const summarySheet = XLSX.utils.json_to_sheet(summaryData);
-        XLSX.utils.book_append_sheet(workbook, summarySheet, "RESUMEN GENERAL");
+        // Ajuste de columnas
+        worksheet['!cols'] = [
+          { wch: 14 }, { wch: 18 }, { wch: 10 }, { wch: 10 },
+          { wch: 16 }, { wch: 10 }, { wch: 10 }, { wch: 14 },
+          { wch: 14 }, { wch: 30 }
+        ];
 
-        // 2. Pestañas Individuales
-        const sheetNamesSet = new Set(["RESUMEN GENERAL"]);
-
-        employees.forEach(emp => {
-          const empRecords = timeRecords.filter(r => String(r.empId) === String(emp.id));
-          let empSheetData = [];
-
-          if (empRecords.length > 0) {
-            empSheetData = empRecords.map(r => ({
-              'Fecha': r.dateStr,
-              'Tipo Día': r.dayType,
-              'Entrada': r.inTime,
-              'Salida': r.outTime,
-              'Horas Ord (7h)': parseFloat(r.ordHours) || 0,
-              'HEDO': parseFloat(r.hedo) || 0,
-              'HENO': parseFloat(r.heno) || 0,
-              'HEDD / HEDF': parseFloat(r.hedd) || 0,
-              'HEND / HENF': parseFloat(r.hend) || 0,
-              'Observaciones': r.obs || ''
-            }));
-
-            let totalOrd = 0, totalHedo = 0, totalHeno = 0, totalHedd = 0, totalHend = 0;
-            empRecords.forEach(r => {
-              totalOrd += parseFloat(r.ordHours) || 0;
-              totalHedo += parseFloat(r.hedo) || 0;
-              totalHeno += parseFloat(r.heno) || 0;
-              totalHedd += parseFloat(r.hedd) || 0;
-              totalHend += parseFloat(r.hend) || 0;
-            });
-
-            empSheetData.push({
-              'Fecha': 'TOTALES',
-              'Tipo Día': '',
-              'Entrada': '',
-              'Salida': '',
-              'Horas Ord (7h)': parseFloat(totalOrd.toFixed(2)),
-              'HEDO': parseFloat(totalHedo.toFixed(2)),
-              'HENO': parseFloat(totalHeno.toFixed(2)),
-              'HEDD / HEDF': parseFloat(totalHedd.toFixed(2)),
-              'HEND / HENF': parseFloat(totalHend.toFixed(2)),
-              'Observaciones': 'Suma Total Acumulada'
-            });
-          } else {
-            empSheetData.push({
-              'Fecha': 'Sin registros',
-              'Tipo Día': '-',
-              'Entrada': '-',
-              'Salida': '-',
-              'Horas Ord (7h)': 0,
-              'HEDO': 0,
-              'HENO': 0,
-              'HEDD / HEDF': 0,
-              'HEND / HENF': 0,
-              'Observaciones': 'Sin jornadas cargadas'
-            });
-          }
-
-          const empSheet = XLSX.utils.json_to_sheet(empSheetData);
-
-          let baseTitle = emp.name.replace(/[\\*?:/[\]]/g, '').trim().substring(0, 20);
-          if (!baseTitle) baseTitle = `ID_${emp.id}`;
-          let finalTitle = baseTitle;
-          let counter = 1;
-          while (sheetNamesSet.has(finalTitle.toUpperCase())) {
-            finalTitle = `${baseTitle.substring(0, 17)}_${counter}`;
-            counter++;
-          }
-          sheetNamesSet.add(finalTitle.toUpperCase());
-
-          XLSX.utils.book_append_sheet(workbook, empSheet, finalTitle);
-        });
+        XLSX.utils.book_append_sheet(workbook, worksheet, "CONTROL HORAS");
 
         const today = new Date().toISOString().split('T')[0];
-        XLSX.writeFile(workbook, `Reporte_Nomina_TierraFertil_${today}.xlsx`);
+        XLSX.writeFile(workbook, `Reporte_Jornadas_TierraFertil_${today}.xlsx`);
 
       } catch (err) {
         console.error('Error al generar Excel:', err);
